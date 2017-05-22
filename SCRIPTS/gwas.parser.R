@@ -1,22 +1,22 @@
-#!/hpc/local/CentOS7/dhl_ec/software/R-3.3.1/bin/Rscript --vanilla
+#!/hpc/local/CentOS7/dhl_ec/software/R-3.3.3/bin/Rscript --vanilla
 
 ### Mac OS X version
 ### #!/usr/local/bin/Rscript --vanilla
 
 ### Linux version
-### #!/hpc/local/CentOS7/dhl_ec/software/R-3.3.1/bin/Rscript --vanilla
+### #!/hpc/local/CentOS7/dhl_ec/software/R-3.3.3/bin/Rscript --vanilla
 
 cat("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     GWAS Parser -- MetaGWASToolKit
     \n
-    * Version: v1.1.7
-    * Last edit: 2016-12-21
+    * Version: v1.2.2
+    * Last edit: 2017-05-21
     * Created by: Sander W. van der Laan | s.w.vanderlaan-2@umcutrecht.nl
     \n
     * Description:  Results parsing of GWAS summary statistics files used for a downstream meta-analysis of GWAS. 
     The script should be usuable on both any Linux distribution with R 3+ installed, Mac OS X and Windows.
     
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n")
+    ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n")
 
 ### Usage: ./gwas.parser.R -p projectdir -d datagwas -o outputdir [OPTIONAL: -v verbose (DEFAULT) -q quiet]
 ###        ./gwas.parser.R --projectdir projectdir --datagwas datagwas --outputdir outputdir [OPTIONAL: --verbose verbose (DEFAULT) -quiet quiet]
@@ -87,28 +87,25 @@ option_list = list(
 )
 opt = parse_args(OptionParser(option_list=option_list))
 
-# #--------------------------------------------------------------------------
-#  
+#--------------------------------------------------------------------------
+
 # ### FOR LOCAL DEBUGGING
 # ### MacBook Pro
-# #MACDIR="/Users/swvanderlaan"
+# #MACDIR="/Users/swvanderlaan/PLINK/analyses"
 # ### Mac Pro
-# MACDIR="/Volumes/MyBookStudioII/Backup"
-#  
-# opt$projectdir=paste0(MACDIR, "/PLINK/analyses/meta_gwasfabp4")
+# MACDIR="/Volumes/EliteProQx2Media/PLINK/analyses"
+# 
+# opt$projectdir=paste0(MACDIR, "/meta_gwasfabp4")
 # ### original
-# opt$datagwas=paste0(MACDIR, "/PLINK/analyses/meta_gwasfabp4/DATA_UPLOAD_FREEZE/1000G/AEGS.WHOLE.FABP4.20150125.txt.gz")
-# #opt$datagwas=paste0(MACDIR, "/PLINK/analyses/meta_gwasfabp4/DATA_UPLOAD_FREEZE/1000G/AEGS.WHOLE.FABP4.20161219.txt.gz")
-# ### different header
-# #opt$datagwas=paste0(MACDIR, "/PLINK/analyses/meta_gwasfabp4/DATA_UPLOAD_FREEZE/1000G/AEGS.WHOLE.FABP4.20150125.TEMP.differenthearder.EffectOther.txt.gz")
-# #opt$datagwas=paste0(MACDIR, "/PLINK/analyses/meta_gwasfabp4/DATA_UPLOAD_FREEZE/AEGS.WHOLE.FABP4.20150125.TEMP.differenthearder.txt.gz")
-# #opt$datagwas=paste0(MACDIR, "/PLINK/analyses/meta_gwasfabp4/DATA_UPLOAD_FREEZE/AEGS.WHOLE.FABP4.20150125.TEMP.differenthearderMinorMajor.txt.gz")
+# #opt$datagwas=paste0(MACDIR, "/meta_gwasfabp4/DATA_UPLOAD_FREEZE/1000G/AEGS.WHOLE.FABP4.20150125.txt.gz")
+# opt$datagwas=paste0(MACDIR, "/meta_gwasfabp4/DATA_UPLOAD_FREEZE/1000G/EPICNL.WHOLE.FABP4.20160629.txt.gz")
+# #opt$datagwas=paste0(MACDIR, "/meta_gwasfabp4/DATA_UPLOAD_FREEZE/1000G/CHS.FABP4.20140827.txt.gz")
 # 
 # opt$outputdir="METAFABP4_1000G/RAW"
 # 
 # ### FOR LOCAL DEBUGGING
-# 
-# #--------------------------------------------------------------------------
+
+#--------------------------------------------------------------------------
 
 if (opt$verbose) {
   ### You can use either the long or short name; so opt$a and opt$avar are the same.
@@ -130,8 +127,8 @@ cat("Starting \"GWAS Parser\".")
 ### main point of program is here, do this whether or not "verbose" is set
 if(!is.na(opt$projectdir) & !is.na(opt$datagwas) & !is.na(opt$outputdir)) {
   cat(paste("\n\nWe are going to parse the GWAS data, by parsing and doing some initial quality control of the data.
-\nAnalysing these results...............: '",basename(opt$datagwas),"'
-Parsed results will be saved here.....: '", opt$outputdir, "'.\n",sep=''))
+            \nAnalysing these results...............: '",basename(opt$datagwas),"'
+            Parsed results will be saved here.....: '", opt$outputdir, "'.\n",sep=''))
   
   ### GENERAL SETUP
   Today=format(as.Date(as.POSIXlt(Sys.time())), "%Y%m%d")
@@ -142,7 +139,7 @@ Parsed results will be saved here.....: '", opt$outputdir, "'.\n",sep=''))
   
   cat("\nChecking existence of output directory and creating it if necessary.\n")
   OUT_loc = opt$outputdir # argument 3
-
+  
   if (file.exists(paste(ROOT_loc, OUT_loc, "/", sep = "/", collapse = "/"))) {
     cat(paste0("* '", OUT_loc,"' exists in '", ROOT_loc, "' and is a directory..."))
   } else if (file.exists(paste(ROOT_loc, OUT_loc, sep = "/", collapse = "/"))) {
@@ -217,7 +214,7 @@ Parsed results will be saved here.....: '", opt$outputdir, "'.\n",sep=''))
       
     } else {
       cat ("\n\n*** ERROR *** Something is rotten in the City of Gotham. The GWAS data is neither comma,
-tab, space, nor semicolon delimited. Double back, please.\n\n", 
+           tab, space, nor semicolon delimited. Double back, please.\n\n", 
            file=stderr()) # print error messages to stder
     }
   } else if(filetype != "gzfile") {
@@ -266,17 +263,17 @@ tab, space, nor semicolon delimited. Double back, please.\n\n",
       
     } else {
       cat ("\n\n*** ERROR *** Something is rotten in the City of Gotham. The GWAS data is neither comma,
-tab, space, nor semicolon delimited. Double back, please.\n\n", 
+           tab, space, nor semicolon delimited. Double back, please.\n\n", 
            file=stderr()) # print error messages to stder
     }
   } else {
     cat ("\n\n*** ERROR *** Something is rotten in the City of Gotham. We can't determine the file type 
-of the GWAS data. Double back, please.\n\n", 
+         of the GWAS data. Double back, please.\n\n", 
          file=stderr()) # print error messages to stder
-    }
-
+  }
+  
   ### Selecting the columns we want
-  cat("\n* selecting required columns, and creating them if not present...")
+  cat("\n* Selecting required columns, and creating them if not present...")
   VectorOfColumnsWeWant <- c("^marker$", "^snp$", "^rsid$", 
                              "^chr$", "^chrom$", "^chromosome$", 
                              "^position$", "^bp$",
@@ -296,11 +293,11 @@ of the GWAS data. Double back, please.\n\n",
                              "^info$")
   matchExpression <- paste(VectorOfColumnsWeWant, collapse = "|")
   GWASDATA_RAWSELECTION <- GWASDATA_RAW %>% select(matches(matchExpression, ignore.case = TRUE))
-   
+  
   ### Change column names case to all 'lower cases'
   names(GWASDATA_RAWSELECTION) <- tolower(names(GWASDATA_RAWSELECTION))
-
-  cat("\n* renaming columns where necessary...")
+  
+  cat("\n* Renaming columns where necessary...")
   ### Rename columns
   ### - variant column will become "Marker"
   ### - chromosome & bp columns will become "CHR" and "BP"
@@ -315,7 +312,7 @@ of the GWAS data. Double back, please.\n\n",
   ###   - noncoded = noneffect = nonrisk = other -- will be coded as "OtherAllele"
   ###   Set these three accordingly, other wise set these to CAF/coded/other
   ###
-
+  
   ### Rename columns -- strand
   GWASDATA_RAWSELECTION <- select(GWASDATA_RAWSELECTION, Strand = matches("^strand$"), everything())
   
@@ -358,7 +355,7 @@ of the GWAS data. Double back, please.\n\n",
   GWASDATA_RAWSELECTION <- select(GWASDATA_RAWSELECTION, EAF = matches("^eaf$"), everything())
   GWASDATA_RAWSELECTION <- select(GWASDATA_RAWSELECTION, MAF = matches("^maf$"), everything())
   GWASDATA_RAWSELECTION <- select(GWASDATA_RAWSELECTION, CAF = matches("^caf$"), everything())
-
+  
   ### Rename columns -- non effect allele
   GWASDATA_RAWSELECTION <- select(GWASDATA_RAWSELECTION, OtherAllele = matches("^non[_]effect[_]allele$"), everything())
   GWASDATA_RAWSELECTION <- select(GWASDATA_RAWSELECTION, OtherAllele = matches("^noneffectallele$"), everything())
@@ -374,7 +371,7 @@ of the GWAS data. Double back, please.\n\n",
   ### Rename columns -- major allele
   GWASDATA_RAWSELECTION <- select(GWASDATA_RAWSELECTION, MajorAllele = matches("^major[_]allele$"), everything())
   GWASDATA_RAWSELECTION <- select(GWASDATA_RAWSELECTION, MajorAllele = matches("^majorallele$"), everything())
-
+  
   #### Rename columns -- coded allele
   GWASDATA_RAWSELECTION <- select(GWASDATA_RAWSELECTION, CodedAllele = matches("^coded[_]allele$"), everything())
   GWASDATA_RAWSELECTION <- select(GWASDATA_RAWSELECTION, CodedAllele = matches("^codedallele$"), everything())
@@ -394,122 +391,132 @@ of the GWAS data. Double back, please.\n\n",
   ### Rename columns -- base pair position
   GWASDATA_RAWSELECTION <- select(GWASDATA_RAWSELECTION, BP = matches("^position$"), everything())
   GWASDATA_RAWSELECTION <- select(GWASDATA_RAWSELECTION, BP = matches("^bp$"), everything())
-
+  
   ### Rename columns -- chromosome
   GWASDATA_RAWSELECTION <- select(GWASDATA_RAWSELECTION, CHR = matches("^chr$"), everything())
   GWASDATA_RAWSELECTION <- select(GWASDATA_RAWSELECTION, CHR = matches("^chrom$"), everything())
   GWASDATA_RAWSELECTION <- select(GWASDATA_RAWSELECTION, CHR = matches("^chromosome$"), everything())
   
   ### Rename columns -- marker name
-  GWASDATA_RAWSELECTION <- select(GWASDATA_RAWSELECTION, Marker = matches("^marker$"), everything())
-  GWASDATA_RAWSELECTION <- select(GWASDATA_RAWSELECTION, Marker = matches("^snp$"), everything())
-  GWASDATA_RAWSELECTION <- select(GWASDATA_RAWSELECTION, Marker = matches("^rsid$"), everything())
+  GWASDATA_RAWSELECTION <- select(GWASDATA_RAWSELECTION, MarkerOriginal = matches("^marker$"), everything())
+  GWASDATA_RAWSELECTION <- select(GWASDATA_RAWSELECTION, MarkerOriginal = matches("^snp$"), everything())
+  GWASDATA_RAWSELECTION <- select(GWASDATA_RAWSELECTION, MarkerOriginal = matches("^rsid$"), everything())
   
   ### Rename columns -- removing leading 'zeros'
-  cat("\n* removing leading 'zeros' from chromosome number...")
+  cat("\n* Removing leading 'zeros' from chromosome number...")
   GWASDATA_RAWSELECTION$CHR <- gsub("(?<![0-9])0+", "", GWASDATA_RAWSELECTION$CHR, perl = TRUE)
-
-  cat("\n* changing X to 23, Y to 24, XY to 25, and MT to 26...")
-  ### Renaming chromosomes -- 'PLINK' standard: 
-  ### X    X chromosome                    -> 23
-  ### Y    Y chromosome                    -> 24
-  ### XY   Pseudo-autosomal region of X    -> 25
-  ### MT   Mitochondrial                   -> 26
+  
+  cat("\n* Changing 23 to X, 24 to Y, 25 to XY, and 26 to MT...")
+  ### Renaming chromosomes
+  ### 1000G standard  Description                   'PLINK' standard
+  ### X               X chromosome                    <-> 23
+  ### Y               Y chromosome                    <-> 24
+  ### XY              Pseudo-autosomal region of X    <-> 25
+  ### MT              Mitochondrial                   <-> 26
   
   ### Rename chromosomes
-  GWASDATA_RAWSELECTION$CHR[GWASDATA_RAWSELECTION$CHR == "X" | GWASDATA_RAWSELECTION$CHR == "x"] <- 23
-  GWASDATA_RAWSELECTION$CHR[GWASDATA_RAWSELECTION$CHR == "Y" | GWASDATA_RAWSELECTION$CHR == "y"] <- 24
-  GWASDATA_RAWSELECTION$CHR[GWASDATA_RAWSELECTION$CHR == "XY" | 
-                              GWASDATA_RAWSELECTION$CHR == "xY" | 
-                              GWASDATA_RAWSELECTION$CHR == "Xy" | 
-                              GWASDATA_RAWSELECTION$CHR == "xy"] <- 25
-  GWASDATA_RAWSELECTION$CHR[GWASDATA_RAWSELECTION$CHR == "MT" | 
-                              GWASDATA_RAWSELECTION$CHR == "Mt" | 
-                              GWASDATA_RAWSELECTION$CHR == "mT" | 
-                              GWASDATA_RAWSELECTION$CHR == "mt"] <- 26
+  GWASDATA_RAWSELECTION$CHR[GWASDATA_RAWSELECTION$CHR == "x" | GWASDATA_RAWSELECTION$CHR == "23"] <- "X"
+  GWASDATA_RAWSELECTION$CHR[GWASDATA_RAWSELECTION$CHR == "y" | GWASDATA_RAWSELECTION$CHR == "24"] <- "Y"
+  GWASDATA_RAWSELECTION$CHR[GWASDATA_RAWSELECTION$CHR == "xY" | GWASDATA_RAWSELECTION$CHR == "Xy" | 
+                              GWASDATA_RAWSELECTION$CHR == "xy" | GWASDATA_RAWSELECTION$CHR == "xy"] <- "XY"
+  GWASDATA_RAWSELECTION$CHR[GWASDATA_RAWSELECTION$CHR == "Mt" | GWASDATA_RAWSELECTION$CHR == "mT" | 
+                              GWASDATA_RAWSELECTION$CHR == "mt"] <- "MT"
   
-  ### set 'chromosome' column to integer
-  GWASDATA_RAWSELECTION <- mutate(GWASDATA_RAWSELECTION, CHR = as.integer(CHR)) # convert to numeric
+  # ### set 'chromosome' column to integer
+  # GWASDATA_RAWSELECTION <- mutate(GWASDATA_RAWSELECTION, CHR = as.integer(CHR)) # convert to numeric
   GWASDATA_RAWSELECTION <- mutate(GWASDATA_RAWSELECTION, BP = as.integer(BP)) # convert to numeric
-
-  ### OBSOLETE -- if you feeding 1 file, this may be useful, if you are batching the data, 
-  ### this may not be that useful (the data will be ordered per batch!)
-  ###cat("\n* arranging based on chromosomal base pair position...") 
-  ###GWASDATA_RAWSELECTION <- arrange(GWASDATA_RAWSELECTION, CHR, BP) # first by chr, then by bp
-  ### OBSOLETE
-
+  
   ### Calculating general statistics if not available
-  cat("\n* calculating 'allele frequencies'...")
+  cat("\n* Calculating 'allele frequencies'...")
   ### calculate MAF -- *only* if MAF/minor allele/major allele *not* present
   ###                  the effect size must be relative to the effect/coded allele and EAF
   ### calculate EAF -- *only* if MAF/minor allele/major allele *is* present - 
   ###                  if they are, the effect size must be relative to the minor
-
+  
   if("MAF" %in% colnames(GWASDATA_RAWSELECTION)) {
-  	cat("\n- minor allele frequency is present, checking for minor/major allele...")
+    cat("\n* Minor allele frequency is present, checking for minor/major allele...")
     
     if("MinorAllele" %in% colnames(GWASDATA_RAWSELECTION)) {
-  	cat("\n- minor allele is present, checking for major allele...")
+      cat("\n- minor allele is present, checking for major allele...")
       
       if("MajorAllele" %in% colnames(GWASDATA_RAWSELECTION)) {
-  	cat("\n- minor/major allele is also present, setting effect/other allele, 
- 	and calculating effect allele frequency...") # we will only set the effect/other alleles here, and get rid of minor/major alleles later
+        cat("\n- minor/major allele is also present, setting effect/other allele, 
+            and calculating effect allele frequency...") # we will only set the effect/other alleles here
         GWASDATA_RAWSELECTION$EAF <- GWASDATA_RAWSELECTION$MAF
         GWASDATA_RAWSELECTION$EffectAllele <- GWASDATA_RAWSELECTION$MinorAllele
         GWASDATA_RAWSELECTION$OtherAllele <- GWASDATA_RAWSELECTION$MajorAllele
-      
+        GWASDATA_RAWSELECTION$BetaMinor <- GWASDATA_RAWSELECTION$Beta
+        
       } else {
-  cat("\n\n*** ERROR *** Something is rotten in the City of Gotham. If there's a 'minor allele', 
-  a 'major allele' must be present as well.", file=stderr()) # print error messages to stder
-        } } } else if("OtherAllele" %in% colnames(GWASDATA_RAWSELECTION)) {
-  	cat("\n- other alleles are present, calculating minor allele frequency...") # we only care for MAF
+        cat("\n\n*** ERROR *** Something is rotten in the City of Gotham. If there's a 'minor allele', 
+            a 'major allele' must be present as well.", file=stderr()) # print error messages to stder
+      } } } else if("OtherAllele" %in% colnames(GWASDATA_RAWSELECTION)) {
+        cat("\n* Other alleles are present, calculating minor allele frequency...") # we only care for MAF
+        
+        if("EAF" %in% colnames(GWASDATA_RAWSELECTION)) {
+          cat("\n- calculating 'MAF' using 'effect allele frequency'...")
+          GWASDATA_RAWSELECTION$MAF <- ifelse(GWASDATA_RAWSELECTION$EAF < 0.50, 
+                                              GWASDATA_RAWSELECTION$EAF, 1-GWASDATA_RAWSELECTION$EAF)
+          GWASDATA_RAWSELECTION$MinorAllele <- ifelse(GWASDATA_RAWSELECTION$EAF < 0.50, 
+                                                      GWASDATA_RAWSELECTION$EffectAllele, GWASDATA_RAWSELECTION$OtherAllele)
+          GWASDATA_RAWSELECTION$MajorAllele <- ifelse(GWASDATA_RAWSELECTION$EAF > 0.50, 
+                                                      GWASDATA_RAWSELECTION$EffectAllele, GWASDATA_RAWSELECTION$OtherAllele)
+          GWASDATA_RAWSELECTION$BetaMinor <- ifelse(GWASDATA_RAWSELECTION$EAF < 0.50, 
+                                                    GWASDATA_RAWSELECTION$Beta, -1*GWASDATA_RAWSELECTION$Beta)
           
-           if("EAF" %in% colnames(GWASDATA_RAWSELECTION)) {
-  	cat("\n- calculating 'MAF' using 'effect allele frequency'...")
-             GWASDATA_RAWSELECTION$MAF <- ifelse(GWASDATA_RAWSELECTION$EAF < 0.50, 
-                                                 GWASDATA_RAWSELECTION$EAF, 1-GWASDATA_RAWSELECTION$EAF)
-             
-             } else if("RAF" %in% colnames(GWASDATA_RAWSELECTION)) {
-  	cat("\n- calculating 'MAF' using 'risk allele frequency'...")
-                GWASDATA_RAWSELECTION$MAF <- ifelse(GWASDATA_RAWSELECTION$RAF < 0.50, 
-                                                    GWASDATA_RAWSELECTION$RAF, 1-GWASDATA_RAWSELECTION$RAF)
-                colnames(GWASDATA_RAWSELECTION)[colnames(GWASDATA_RAWSELECTION) == "RAF"] <- "EAF"
-                
-                } else if("CAF" %in% colnames(GWASDATA_RAWSELECTION)) {
-  	cat("\n- calculating 'MAF' using 'coded allele frequency'...")
-                  GWASDATA_RAWSELECTION$MAF <- ifelse(GWASDATA_RAWSELECTION$CAF < 0.50, 
-                                                      GWASDATA_RAWSELECTION$CAF, 1-GWASDATA_RAWSELECTION$CAF)
-                  colnames(GWASDATA_RAWSELECTION)[colnames(GWASDATA_RAWSELECTION) == "CAF"] <- "EAF"
-                  
-                  } else {
-  cat("\n\n*** ERROR *** Something is rotten in the City of Gotham. 'MAF', EAF', 'RAF', nor 'CAF' is present. Double back, please.", file=stderr()) # print error messages to stder
-             } 
-
-          } else {
-  cat("\n\n*** ERROR *** Something is rotten in the City of Gotham. There's something wrong with the allele frequencies. Double back, please.", file=stderr()) # print error messages to stder
+        } else if("RAF" %in% colnames(GWASDATA_RAWSELECTION)) {
+          cat("\n- calculating 'MAF' using 'risk allele frequency'...")
+          GWASDATA_RAWSELECTION$MAF <- ifelse(GWASDATA_RAWSELECTION$RAF < 0.50, 
+                                              GWASDATA_RAWSELECTION$RAF, 1-GWASDATA_RAWSELECTION$RAF)
+          GWASDATA_RAWSELECTION$MinorAllele <- ifelse(GWASDATA_RAWSELECTION$RAF < 0.50, 
+                                                      GWASDATA_RAWSELECTION$RiskAllele, GWASDATA_RAWSELECTION$OtherAllele)
+          GWASDATA_RAWSELECTION$MajorAllele <- ifelse(GWASDATA_RAWSELECTION$RAF > 0.50, 
+                                                      GWASDATA_RAWSELECTION$RiskAllele, GWASDATA_RAWSELECTION$OtherAllele)
+          GWASDATA_RAWSELECTION$BetaMinor <- ifelse(GWASDATA_RAWSELECTION$RAF < 0.50, 
+                                                    GWASDATA_RAWSELECTION$Beta, -1*GWASDATA_RAWSELECTION$Beta)
+          colnames(GWASDATA_RAWSELECTION)[colnames(GWASDATA_RAWSELECTION) == "RAF"] <- "EAF"          
           
-          } 
+        } else if("CAF" %in% colnames(GWASDATA_RAWSELECTION)) {
+          cat("\n- calculating 'MAF' using 'coded allele frequency'...")
+          GWASDATA_RAWSELECTION$MAF <- ifelse(GWASDATA_RAWSELECTION$CAF < 0.50, 
+                                              GWASDATA_RAWSELECTION$CAF, 1-GWASDATA_RAWSELECTION$CAF)
+          GWASDATA_RAWSELECTION$MinorAllele <- ifelse(GWASDATA_RAWSELECTION$CAF < 0.50, 
+                                                      GWASDATA_RAWSELECTION$CodedAllele, GWASDATA_RAWSELECTION$OtherAllele)
+          GWASDATA_RAWSELECTION$MajorAllele <- ifelse(GWASDATA_RAWSELECTION$CAF > 0.50, 
+                                                      GWASDATA_RAWSELECTION$CodedAllele, GWASDATA_RAWSELECTION$OtherAllele)
+          GWASDATA_RAWSELECTION$BetaMinor <- ifelse(GWASDATA_RAWSELECTION$CAF < 0.50, 
+                                                    GWASDATA_RAWSELECTION$Beta, -1*GWASDATA_RAWSELECTION$Beta)
+          colnames(GWASDATA_RAWSELECTION)[colnames(GWASDATA_RAWSELECTION) == "CAF"] <- "EAF"
+          
+        } else {
+          cat("\n\n*** ERROR *** Something is rotten in the City of Gotham. 'MAF', EAF', 'RAF', nor 'CAF' is present. Double back, please.", file=stderr()) # print error messages to stder
+        } 
+        
+      } else {
+        cat("\n\n*** ERROR *** Something is rotten in the City of Gotham. There's something wrong with the allele frequencies. Double back, please.", file=stderr()) # print error messages to stder
+        
+      } 
   
   ### Calculate MAC
-  cat("\n* calculating 'minor allele count' (MAC)...")
+  cat("\n* Calculating 'minor allele count' (MAC)...")
   GWASDATA_RAWSELECTION$MAC <- (GWASDATA_RAWSELECTION$MAF*GWASDATA_RAWSELECTION$N*2)
-
-  cat("\nCreating the final parsed dataset.")
+  
+  cat("\n* Creating the final parsed dataset.")
   
   cat("\n- making empty dataframe...")
-  col.Classes = c("character", "integer", "integer", "character", 
-                 "character", "character", 
-                 "numeric", "numeric", "numeric", "numeric", "numeric", 
-                 "numeric", "numeric", "numeric", 
-                 "integer", "integer", "integer", 
-                 "character")
-  col.Names = c("Marker", "CHR", "BP", "Strand", 
-                "EffectAllele", "OtherAllele", 
+  col.Classes = c("character", "character", "integer", "integer", "character", 
+                  "character", "character", "character", "character", 
+                  "numeric", "numeric", "numeric", "numeric", "numeric", 
+                  "numeric", "numeric", "numeric", "numeric", 
+                  "integer", "integer", "integer", 
+                  "character")
+  col.Names = c("Marker", "MarkerOriginal", "CHR", "BP", "Strand", 
+                "EffectAllele", "OtherAllele", "MinorAllele", "MajorAllele", 
                 "EAF", "MAF", "MAC", "HWE_P", "Info",
-                "Beta", "SE", "P",
+                "Beta", "BetaMinor", "SE", "P",
                 "N", "N_cases", "N_controls",
                 "Imputed")
-  num_rows = length(GWASDATA_RAWSELECTION$Marker)
+  num_rows = length(GWASDATA_RAWSELECTION$MarkerOriginal)
   num_cols = length(col.Names)
   
   ### Function to create empty table
@@ -521,10 +528,17 @@ of the GWAS data. Double back, please.\n\n",
   
   GWASDATA_PARSED <- create_empty_table(num_rows, num_cols)
   colnames(GWASDATA_PARSED) <- col.Names
-
+  
   cat("\n- adding data to dataframe...")
-  cat("\n  > adding the markers...")
-  GWASDATA_PARSED$Marker <- GWASDATA_RAWSELECTION$Marker
+  cat("\n  > adding the new markers; these will have the form [ chr<#>:<#>:MinorAllele_MajorAllele] ...")
+  GWASDATA_PARSED$Marker <- as.character(paste("chr",GWASDATA_RAWSELECTION$CHR,":",
+                                               GWASDATA_RAWSELECTION$BP,":",
+                                               GWASDATA_RAWSELECTION$MinorAllele,"_",
+                                               GWASDATA_RAWSELECTION$MajorAllele, 
+                                               sep = ""))
+  
+  cat("\n  > adding the original markers...")
+  GWASDATA_PARSED$MarkerOriginal <- GWASDATA_RAWSELECTION$MarkerOriginal
   
   cat("\n  > changing NA to '0' for Chr...")
   GWASDATA_PARSED$CHR <- GWASDATA_RAWSELECTION$CHR
@@ -537,10 +551,12 @@ of the GWAS data. Double back, please.\n\n",
   cat("\n  > adding strand information...")
   GWASDATA_PARSED$Strand <- ifelse(("Strand" %in% colnames(GWASDATA_RAWSELECTION)) == TRUE, 
                                    GWASDATA_RAWSELECTION$Strand, "+") # we always assume that the +-strand was used
-
+  
   cat("\n  > adding alleles...")
   GWASDATA_PARSED$EffectAllele <- ifelse(GWASDATA_RAWSELECTION$EffectAllele != "NA", GWASDATA_RAWSELECTION$EffectAllele, "NA")
   GWASDATA_PARSED$OtherAllele <- ifelse(GWASDATA_RAWSELECTION$OtherAllele != "NA", GWASDATA_RAWSELECTION$OtherAllele, "NA")
+  GWASDATA_PARSED$MinorAllele <- ifelse(GWASDATA_RAWSELECTION$MinorAllele != "NA", GWASDATA_RAWSELECTION$MinorAllele, "NA")
+  GWASDATA_PARSED$MajorAllele <- ifelse(GWASDATA_RAWSELECTION$MajorAllele != "NA", GWASDATA_RAWSELECTION$MajorAllele, "NA")
   
   cat("\n  > adding allele statistics...")
   GWASDATA_PARSED$EAF <- ifelse(GWASDATA_RAWSELECTION$EAF != "NA", GWASDATA_RAWSELECTION$EAF, "NA")
@@ -548,22 +564,23 @@ of the GWAS data. Double back, please.\n\n",
   GWASDATA_PARSED$MAC <- ifelse(GWASDATA_RAWSELECTION$MAC != "NA", GWASDATA_RAWSELECTION$MAC, "NA")
   
   if(("HWE_P" %in% colnames(GWASDATA_RAWSELECTION)) == TRUE){
-    GWASDATA_PARSED$HWE_P <- ifelse(GWASDATA_RAWSELECTION$HWE_P != "NA", GWASDATA_RAWSELECTION$HWE_P, "NA")
+    GWASDATA_PARSED$HWE_P <- ifelse(GWASDATA_RAWSELECTION$HWE_P != "NA", GWASDATA_RAWSELECTION$HWE_P, "1") # this is not always present, hence we set it at "1"
   } else {
-    GWASDATA_PARSED$HWE_P <- "NA" # this is not always present
+    GWASDATA_PARSED$HWE_P <- "1" # this is not always present, hence we set it at "1"
   } 
   
   if(("Info" %in% colnames(GWASDATA_RAWSELECTION)) == TRUE){
-    GWASDATA_PARSED$Info <- ifelse(GWASDATA_RAWSELECTION$Info != "NA", GWASDATA_RAWSELECTION$Info, "NA")
+    GWASDATA_PARSED$Info <- ifelse(GWASDATA_RAWSELECTION$Info != "NA", GWASDATA_RAWSELECTION$Info, "1") # in case "NA" we set it to 1
   } else {
     GWASDATA_PARSED$Info <- "1" # in case of genotyped data
   }
   
   cat("\n  > adding test statistics...")  
-  GWASDATA_PARSED$Beta <- ifelse(GWASDATA_RAWSELECTION$Beta != "NA", GWASDATA_RAWSELECTION$Beta, "NA")
+  GWASDATA_PARSED$Beta <- ifelse(GWASDATA_RAWSELECTION$Beta != "NA", GWASDATA_RAWSELECTION$Beta, "NA") # Note that beta is relative to the EffectAllele
+  GWASDATA_PARSED$BetaMinor <- ifelse(GWASDATA_RAWSELECTION$BetaMinor != "NA", GWASDATA_RAWSELECTION$BetaMinor, "NA") # Note that betaminor is relative to the MinorAllele
   GWASDATA_PARSED$SE <- ifelse(GWASDATA_RAWSELECTION$SE != "NA", GWASDATA_RAWSELECTION$SE, "NA")
   GWASDATA_PARSED$P <- ifelse(GWASDATA_RAWSELECTION$P != "NA", GWASDATA_RAWSELECTION$P, "NA")
-
+  
   cat("\n  > adding sample information statistics...")  
   GWASDATA_PARSED$N <- ifelse(GWASDATA_RAWSELECTION$N != "NA", GWASDATA_RAWSELECTION$N, "NA")
   
@@ -585,7 +602,7 @@ of the GWAS data. Double back, please.\n\n",
     GWASDATA_PARSED$Imputed <- "2" # 2 = no information, 1 = imputed, 0 = genotyped
   }
   
-  cat("\nAll done creating the final parsed dataset.")
+  cat("\n* All done creating the final parsed dataset.")
   ### SAVE NEW DATA ###
   cat("\n\nSaving parsed data...\n")
   write.table(GWASDATA_PARSED, 
@@ -599,15 +616,15 @@ of the GWAS data. Double back, please.\n\n",
   cat(paste("\nAll done parsing [",file_path_sans_ext(basename(opt$datagwas), compression = TRUE),"].\n"))
   cat(paste("\nToday's date is: ", Today, ".\n", sep = ''))
   
-} else {
-  cat("\n\n\n\n++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n")
-  cat("\n*** ERROR *** You didn't specify all variables:\n
-      - --p/projectdir    : Path to the project directory.
-      - --d/datagwas      : Path to the GWAS data, relative to the project directory;
-                            can be tab, comma, space or semicolon delimited, as well as gzipped.
-      - --o/outputdir     : Path to output directory.",
-      file=stderr()) # print error messages to stderr
-}
+  } else {
+    cat("\n\n\n\n++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n")
+    cat("\n*** ERROR *** You didn't specify all variables:\n
+        - --p/projectdir    : Path to the project directory.
+        - --d/datagwas      : Path to the GWAS data, relative to the project directory;
+        can be tab, comma, space or semicolon delimited, as well as gzipped.
+        - --o/outputdir     : Path to output directory.",
+        file=stderr()) # print error messages to stderr
+  }
 
 cat("\n++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n")
 # 

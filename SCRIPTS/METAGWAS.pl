@@ -1,20 +1,15 @@
 #!/usr/bin/perl
 ##########################################################################################
 #
-# FIXES NEEDED
-#	- dbSNP file with INDELs
-#	- handle INDELs like bi-allelic variants
+# Version               : 2.1.10"
 #
-#
-#
-#
-# Version: METAGWAS2.1.1"
-#
-# Last update			: 2017-04-20"
-# Updated by			: Sander W. van der Laan | UMC Utrecht, s.w.vanderlaan-2@umcutrecht.nl)
+# Last update			: 2017-05-22"
+# Updated by			: Sander W. van der Laan | UMC Utrecht, s.w.vanderlaan-2@umcutrecht.nl);
+#						  Jacco Schaap | UMC Utrecht, j.schaap-2@umcutrecht.nl);
+#						  Jessica van Setten | UMC Utrecht, j.vansetten@umcutrecht.nl).
 # Originally written by	: Paul I.W. de Bakker | UMC Utrecht, p.i.w.debakker-2@umcutrecht.nl; 
 #						  Sara Pulit | UMC Utrecht, s.l.pulit@umcutrecht.nl);
-#						  Jessica van Setten | UMC Utrecht, j.vansetten@umcutrecht.nl);
+#						  Jessica van Setten | UMC Utrecht, j.vansetten@umcutrecht.nl).
 #
 # Note					: Originally based on MANTEL.pl, but heavily edited to accomodate 
 #						  the new era of 1000G and Haplotype Reference Consortium (HRC) 
@@ -40,7 +35,7 @@
 #
 #    Expected file format (where the number indicates the column):
 #
-#	 VariantID CHR BP Beta SE P EffectAllele OtherAllele EAF  Info
+#	 VariantID CHR BP Beta SE P CodedAllele OtherAllele MAF  Info
 #	 1         2   3  4    5  6 7            8           9    10
 #
 #    where:
@@ -48,11 +43,11 @@
 #    - 'BP' is the chromosomal basepair position of the variant, 
 #	 - 'Beta' is the computed estimate parameter of the effect of the given variant,
 #    - 'SE' is the standard error around that Beta estimate,
-#    - 'EffectAllele' represents the effect allele that the Beta and SE are referring to, 
+#    - 'CodedAllele' represents the effect allele that the Beta and SE are referring to, 
 #    - 'OtherAllele' is the other allele,
-#    - 'EAF' refers to the allele frequency of the effect allele (EffectAllele), 
+#    - 'MAF' refers to the minor allele frequency relative to the effect allele (CodedAllele), 
 #    - 'Info' is the ratio of the observed variance of the dosage to the expected (binomial) 
-#    variance (i.e. the imputation quality, info-score),
+#    variance (i.e. the imputation quality, info-score).
 #
 #    Columns 2-10 are repeated (on the same line) for every additional GWAS that is part of the
 #    meta-analysis.
@@ -63,8 +58,10 @@
 #    See [de Bakker PIW et al., Human Molecular Genetics, 2008] for more background 
 #    information on this topic.
 #
-#	 Note: 	Here a VariantID can be a single-nucleotide polymorphism or another type of 
-#           variant such as a INDEL or other structural variant.
+#	 Note #1: 	Here a VariantID can be a single-nucleotide polymorphism or another type of 
+#           	variant such as a INDEL or other structural variant.
+#	 Note #2: 	Here EAF is expected to be the minor allele frequency to maintain backward
+#				compatibility with HapMap 2 data!
 #
 # 2) [--params]	A plain-text file that contains study-specific parameters 
 #
@@ -91,48 +88,43 @@
 #
 # 3) [--variants]	Just a list of unique variants present across all cohorts.
 #
-# 4) [--dbsnp]	A dbSNP annotations file which includes all the information known about the variants; 
+# 4) [--dbsnp]	A Variant Annotation File which includes all the information known about the variants; 
 #    can be based on HapMap or 1000G, or any other reference.
 #
 #    Expected file format:
 #
-#    chrom	chromStart	chromEnd	name		strand	observed			class	func
-#	 chr1	6946796		6946821		rs57898978	+		A/G					single	intron
-#	 chr1	8912885		8912910		rs57188530	+		C/G					single	unknown
-#	 chr1	34340790	34340885	rs6143185	+		(LARGEDELETION)/-	named	intron
-#	 chr1	102891517	102891542	rs56752146	+		A/G					single	unknown
-#
-# 5) [--freq ]	A PLINK generated file (--freq) which is used as the reference to resolve
-#    ambiguities in allele coding; can be based on HapMap or 1000G, or any other reference.
-#
-#    Expected file format:
-#
-#    CHR          VariantID   A1   A2          MAF  NCHROBS
-#      1            2    3    4            5        6
+#    Chr ChrStart ChrEnd VariantID Strand Alleles VariantClass VariantFunction
+#    chr1 62914560 62914560 rs538775156 + -/T insertion intron
+#    chr1 40370176 40370176 rs564192510 + -/T insertion unknown
+#    chr1 61341695 61341699 rs146746778 + -/TTTA deletion unknown
+#    chr1 71827455 71827460 rs774608072 + -/TCTTA deletion unknown
+#    chr1 88342516 88342533 rs777906343 + -/ACATTTAGGTTATTTCC deletion unknown
 #
 # 5) [--freq ]	A file which is used as the reference to resolve ambiguities in allele 
 #    coding; can be based on HapMap or 1000G, or any other reference.
 #
-#	HapMap version			1000G version
-#	ColumnName	ColumNo.	ColumnName	ColumNo.
-#	VariantID	1			VariantID	1
-#	CHR_REF		2			CHR_REF		2
-#	BP_REF		3			BP_REF		3
-#	REF			4			REF			4
-#	ALT			5			ALT			5
-#	AF			6			AF			6
-#							EURAF		7
-#							AFRAF		8
-#							AMRAF		9
-#							ASNAF		10
-#							EASAF		11
-#							SASAF		12
-#
+#    HapMap version			1000G version
+#    ColumnName	ColumNo.	ColumnName	ColumNo.
+#    VariantID	1			VariantID	1
+#    CHR_REF	2			CHR_REF		2
+#    BP_REF		3			BP_REF		3
+#    REF		4			REF			4
+#    ALT		5			ALT			5
+#    AF			6			ALLELEA		6
+#    MAF		7			ALLELEB		7
+#    						MINOR		8
+#    						MAJOR		9
+#    						AF			10
+#    						MAF			11
+#    
 # 6) [--genes]	Gene annotations
 #
 #    Expected file format:
 #
-#    CHR START STOP GENE_SYMBOL
+#    Chr TxStart		TxEnd		Gene		EnsemblID			Strand
+#    1 	66999065 	67213982 	SGIP1 		ENST00000237247.6,ENST00000371039.1,ENST00000371035.3,ENST00000468286.1,ENST00000371036.3,ENST00000371037.4 	+
+#    1 	8377885 	8404227 	SLC45A1 	ENST00000471889.1,ENST00000377479.2,ENST00000289877.8 	+
+#    1 	16767166	16786573 	NECAP2 		ENST00000337132.5 	+
 #
 # 7) [--ref]	Reference to be used. This can either be [HM2/1Gp1/1Gp3/GoNL4/GoNL5/1Gp3GONL5],
 #				for HapMap 2 (release 22), 1000G phase 1 (version 3), 1000G phase 3 (version 5),
@@ -175,7 +167,8 @@
 
 print STDOUT "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n";
 print STDOUT "+             MetaGWASToolKit: Meta-Analysis of Genome-Wide Association Studies          +\n";
-print STDOUT "+                                 version 2.0 | 20-04-2017                               +\n";
+print STDOUT "+                                 version 2.0 | 11-05-2017                               +\n";
+print STDOUT "+                              (formely known as [ MANTEL ])                             +\n";
 print STDOUT "+                                                                                        +\n";
 print STDOUT "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n";
 print STDOUT "\n";
@@ -196,17 +189,17 @@ my $extractFile; # obligatory
 my $dbsnpFile; # obligatory
 my $freqFile; # obligatory
 my $genesFile; # obligatory
-my $extension = "";
-my $gene_dist = 500;
+my $extension = ''; # command-line option
+my $gene_dist = '200'; # command-line option
 my $reference; # obligatory
 my $population; # obligatory
-my $freq_flip = 0.15;
-my $freq_warning = 0.45;
+my $freq_flip = '0.30'; # command-line option
+my $freq_warning = '0.45'; # command-line option
 my $low_freq_warning = $freq_warning;
 my $hifreq_warning = 1-$freq_warning;
-my $no_header = '';
-my $random_effects = '';
-my $verbose = '';
+my $no_header = ''; # command-line option
+my $random_effects = ''; # command-line option
+my $verbose = ''; # command-line option
 my $outFile = "metagwas.out";
 
 GetOptions(
@@ -219,8 +212,8 @@ GetOptions(
 	   "dist=i"         => \$gene_dist,
 	   "ref=s"          => \$reference,
 	   "pop=s"          => \$population,
-	   "freq-flip=i"    => \$freq_flip,
-	   "freq-warning=i" => \$freq_warning,
+	   "freq-flip=f"     => \$freq_flip,
+	   "freq-warning=f"  => \$freq_warning,
 	   "out=s"          => \$outFile,
 	   "ext=s"          => \$extension,
 	   "no-header"      => \$no_header,
@@ -228,14 +221,14 @@ GetOptions(
 	   "verbose"        => \$verbose
            );
 
-if ( ! $paramsFile || ! $variantFile || ! $dbsnpFile || ! $freqFile || ! $genesFile  || ! $reference  || ! $population || ! $freq_flip || ! $freq_warning ) {
+if ( ! $paramsFile || ! $variantFile || ! $dbsnpFile || ! $freqFile || ! $genesFile  || ! $reference  || ! $population ) {
 	print STDERR "*** ERROR *** You didn't supply the required arguments.\n";
 	print STDERR "\n";
 	print STDERR "Usage: metagwas.pl --params params_file --variants variants_file --dbsnp dbsnp_file --freq freq_file --genes genes_file --ref reference --pop population\n";
 	print STDERR "\n";
 	print STDERR "OPTIONAL: \n";
 	print STDERR "--dist           Maximal distance to a gene (in kilobase units); default is 200kb.\n";
-	print STDERR "--freq-flip      The frequency filter based on which the alleles will be flipped; default is 0.15.\n";
+	print STDERR "--freq-flip      The frequency filter based on which the alleles will be flipped; default is 0.30.\n";
 	print STDERR "--freq-warning   The frequency based on which a warning will be given for A/T & C/G SNPs; default is 0.45.\n";
 	print STDERR "--ext            Extension of the input file.\n";
 	print STDERR "--extract        List of variants to extract -- the meta-analysis will only be done on these.\n";
@@ -254,8 +247,8 @@ print STDOUT "  --genes          : $genesFile\n"; # a gene-list
 print STDOUT "  --dist           : $gene_dist\n"; # distance to consider genes linked to variants (default = 2000kb)
 print STDOUT "  --ref            : $reference\n"; # reference to be used
 print STDOUT "  --pop            : $population\n"; # population within the reference
-print STDOUT "  --freq-flip      : $freq_flip\n"; # frequency at which alleles are flipped
-print STDOUT "  --freq-warning   : $freq_warning\n"; # frequency at which a warning is given
+print STDOUT "  --freq-flip       : $freq_flip\n"; # frequency at which alleles are flipped
+print STDOUT "  --freq-warning    : $freq_warning\n"; # frequency at which a warning is given
 print STDOUT "  --out            : $outFile\n"; # name of the output file
 
 if ( $extension ne "" ) {
@@ -367,7 +360,7 @@ my @sample_size = ();
 my @correction_factor = ();
 my @allele_flips = ();
 my @sign_flips = ();
-my @n_informative_snps = ();
+my @n_informative_variants = ();
 my @fh = ();
 
 my $nstudies = 0;
@@ -421,8 +414,6 @@ while(my $c = <PARAMS>){
   }
   close($FILE);
 
-  print STDOUT "* Reading [ $filename[$nstudies] ] with [ $counter ] variants...\n";
-
   ### reopen it and skip first line (if --no_header is not specified)
   $fh[$nstudies]->open($filename[$nstudies]) || die "*** ERROR *** [ $filename[$nstudies] ] did not open. Please double back.\n";
   if ( ! $no_header ) { 
@@ -434,7 +425,7 @@ while(my $c = <PARAMS>){
 
   $allele_flips[$nstudies] = 0;
   $sign_flips[$nstudies] = 0;
-  $n_informative_snps[$nstudies] = 0;
+  $n_informative_variants[$nstudies] = 0;
 
   $nstudies++;
 }
@@ -449,33 +440,46 @@ print STDOUT "Total number of studies: $nstudies.\n";
 ##########################################################################################
 ##########################################################################################
 ###
-### read in dbSNP file to get inventory of markers, positions and annotation
+### read in a Variant Annotation File to get inventory of markers, positions and annotation
 ###
 ##########################################################################################
 ##########################################################################################
 #
-# Expected format of such a dbSNP file is the following:
+# This Variant Annotation File contains a list of variants with associated annotation data; 
+# it could be manually generated using a reference, for instance 1000G phase 1 or phase 3.
+# Among others it is used to:
+# - check the existence of a variant in the respective GWAS in the reference
+# - obtain functional information on the variant and add this to an annotated meta-analysis
+#   output
 #
-#	chrom	chromStart	chromEnd	name		strand	observed			class	func
-#	chr1	6946796		6946821		rs57898978	+		A/G					single	intron
-#	chr1	8912885		8912910		rs57188530	+		C/G					single	unknown
-#	chr1	34340790	34340885	rs6143185	+		(LARGEDELETION)/-	named	intron
-#	chr1	102891517	102891542	rs56752146	+		A/G					single	unknown
+# NOTE: dbSNP only contains variants which have been assigned a rs-identifier; in many
+#       references (GoNL4, GoNL5, 1000G phase 1, 1000G phase 3) variants exist that were 
+#       submitted to dbSNP but have had no rs-identifier assigned yet. This implies that 
+#       relying solely on the dbSNP database may not be appropriate for your specific 
+#       meta-analysis of GWAS.
+# 
+# Expected format of such a Variant Annotation File is the following:
+#
+#	Chr ChrStart ChrEnd VariantID Strand Alleles VariantClass VariantFunction
+#	chr1 62914560 62914560 rs538775156 + -/T insertion intron
+#	chr1 40370176 40370176 rs564192510 + -/T insertion unknown
+#	chr1 61341695 61341699 rs146746778 + -/TTTA deletion unknown
+#	chr1 71827455 71827460 rs774608072 + -/TCTTA deletion unknown
+#	chr1 88342516 88342533 rs777906343 + -/ACATTTAGGTTATTTCC deletion unknown
+#
 print STDOUT "\n";
 print STDOUT "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n";
-print STDOUT "Reading in dbSNP annotation file.\n"; 
+print STDOUT "Reading in Variant Annotation File.\n"; 
 print STDOUT "\n";
 
-### NOTE TO SELF # Are INDELs in the dbSNP file? Should we add them? Where do we get them??? ###
-
 open (DBSNP, "gunzip -c $dbsnpFile |") or die "*** ERROR *** Cannot open [ $dbsnpFile ]. Please double back.\n";
-print STDOUT "* Reading dbSNP annotations file: [ $dbsnpFile ]...\n";
+print STDOUT "* Reading: [ $dbsnpFile ]...\n";
 
 my $n_dbsnp_annotations = 0;
 my %skip_list = ();
 my %dbsnp_chr = ();
 my %dbsnp_pos = ();
-my %dbsnp_alleles = ();
+# my %dbsnp_alleles = ();
 my %dbsnp_a1 = ();
 my %dbsnp_a2 = ();
 my %dbsnp_function = ();
@@ -492,27 +496,29 @@ while(my $c = <DBSNP>){
   
   if ( defined( $variantlist{$variant} ) && ( ( ! $extractFile ) || defined( $extract{$variant} ) ) ) {
 
-    if ( defined( $dbsnp_a1{$variant} ) ) {
-    	print STDERR "$variant appears more than once -- skipping it\n";
-    	$caveat{$variant} = "not_unique_position";
-		$skip_list{$variant} = 1;
-		next;
-    }
+	### should probably be removed, as SNPs and INDELs can exist on the same basepair position(s)
+     if ( defined( $dbsnp_a1{$variant} ) ) {
+      	print STDERR "$variant appears more than once -- skipping it\n";
+     	$caveat{$variant} = "not_unique_position";
+#  		$skip_list{$variant} = 1;
+  		next;
+     }
     
     my @alleles = split /\//, $fields[5];
    
+    ### Checking how many 'elements' exist in @alleles: if '2' elements, '1' is returned
     if ( $#alleles > 1 ) { 
       print STDERR "* $variant has more than 2 alleles [" . $fields[5] . "] -- skipping it.\n";
       $skip_list{$variant} = 1;
       next;
     } 
 
-### NOTE TO SELF: what does this mean??? ###
    if ( $fields[5] =~ m/lengthTooLong/ ) {
       print STDERR "* $variant has alleles with [ lengthTooLong ] -- skipping it.\n";
       $skip_list{$variant} = 1;
       next;
     }
+    
     if ( $#alleles == 0 ) { 
       print STDERR "* $variant has only 1 allele [" . $fields[5] . "] -- skipping it.\n";
       $skip_list{$variant} = 1;
@@ -523,32 +529,22 @@ while(my $c = <DBSNP>){
     $dbsnp_chr{$variant} = $fields[0];
     $dbsnp_pos{$variant} = $fields[1] + 1;
     $dbsnp_function{$variant} = $fields[7];
-    $dbsnp_alleles{$variant} = [ @alleles ];
-    $dbsnp_a1{$variant} = $alleles[0];
-    $dbsnp_a2{$variant} = $alleles[1];
-	
-	my $strand = $fields[4]; 
-#     if ( $strand eq "+" ) { next; }
-#     
-#     print STDERR "* From dbSNP read $variant with [ $dbsnp_alleles{$variant}[0] / $dbsnp_alleles{$variant}[1] ] alleles has strand [ $strand ] and function [ $dbsnp_function{$variant} ].\n";
+#     $dbsnp_alleles{$variant} = [ @alleles ];
+    $dbsnp_a1{$variant} = $alleles[0]; # reference allele
+    $dbsnp_a2{$variant} = $alleles[1]; # alternative allele, equals to AlleleB in 1000G and thus the coded/effect allele of 1000G imputed data
     
+	my $strand = $fields[4]; 
+#     if ( $strand eq "+" ) { 
+#       	print STDERR " ***DEBUG***  From dbSNP read $variant, with [ $dbsnp_alleles{$variant}[0] / $dbsnp_alleles{$variant}[1] ] alleles, has strand [ $strand ] and function [ $dbsnp_function{$variant} ].\n";
+# 		next; 
+# 	}
     if ( $strand eq "-" ) { 
-#     	@{$dbsnp_alleles{$variant}} = ();
-#     	foreach my $allele ( @alleles ) { 
-#     	
-#     		push @{$dbsnp_alleles{$variant}}, allele_flip( $allele );
-#     	
-#     	}
-		
+#    		print STDERR " ***DEBUG***  From dbSNP read $variant, with [ $dbsnp_alleles{$variant}[0] / $dbsnp_alleles{$variant}[1] ] alleles, has strand [ $strand ]. Correcting.\n";		
 		$dbsnp_a1{$variant} = allele_flip( $dbsnp_a1{$variant} );
 		$dbsnp_a2{$variant} = allele_flip( $dbsnp_a2{$variant} );
- 	
- 		print STDERR "* From dbSNP read $variant with [ $dbsnp_alleles{$variant}[0] / $dbsnp_alleles{$variant}[1] ] alleles has strand [ $strand ] and function [ $dbsnp_function{$variant} ]. Correcting.\n";
- 	   
     }
-    
-    $n_dbsnp_annotations++;
   }
+  $n_dbsnp_annotations++;
 }
 close (DBSNP);
 
@@ -557,19 +553,19 @@ print STDOUT "Number of annotated variants: $n_dbsnp_annotations.\n";
 ##########################################################################################
 ##########################################################################################
 ###
-### check all variants on the list if they are in dbSNP 
+### check all variants on the list if they are in Variant Annotation File 
 ###
 ##########################################################################################
 ##########################################################################################
 print STDOUT "\n";
 print STDOUT "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n";
-print STDOUT "Checking existence in dbSNP of variants listed in this meta-analysis.\n";
+print STDOUT "Checking existence in the Variant Annotation File of variants listed in this meta-analysis.\n";
 print STDOUT "\n";
 
 for (my $nvariant; $nvariant < $n_total_variants; $nvariant++) {
   my $variant = $variant_name[$nvariant];
   if ( ! defined( $skip_list{$variant} ) && ( ( ! $extractFile ) || defined( $extract{$variant} ) ) && ! defined( $dbsnp_chr{$variant} ) ) {
-    print STDERR "* $variant in [ $variantFile ] is not annotated in dbSNP -- skipping it.\n";
+    print STDERR "* $variant in [ $variantFile ] is not present in the Variant Annotation File  -- skipping it.\n";
     $skip_list{$variant} = 1;
   }
 }
@@ -583,19 +579,33 @@ for (my $nvariant; $nvariant < $n_total_variants; $nvariant++) {
 ##########################################################################################
 ##########################################################################################
 #
+# Expected format of such a RefFreq HAPMAP file is the following:
+#
+# 	0		  	1	    2       3           4           5   6
+#	VariantID	CHR_REF	BP_REF	MinorAllele	MajorAllele	AF	MAF
+#	rs58108140	1	10583	A	G	0.14	0.14
+#	rs189107123	1	10611	G	C	0.02	0.02
+#	rs180734498	1	13302	T	C	0.11	0.11
+#	rs144762171	1	13327	C	G	0.03	0.03
+#	rs201747181	1	13957	T	TC	0.02	0.02
+#	rs151276478	1	13980	C	T	0.02	0.02
+#	rs140337953	1	30923	G	T	0.73	0.27
+#	rs199681827	1	46402	CTGT	C	0.0037	0.0037
+#	rs200430748	1	47190	GA	G	0.01	0.01
+#
 # Expected format of such a RefFreq file is the following:
 #
-# 	0		  1	      2      3   4   5  6     7     8     9     10    11
-#	VariantID CHR_REF BP_REF REF ALT AF EURAF AFRAF AMRAF ASNAF EASAF SASAF
-#	rs58108140 1 10583 G A 0.14 NA 0.04 0.17 0.13 NA NA
-#	rs189107123 1 10611 C G 0.02 NA 0.01 0.03 0.01 NA NA
-#	rs180734498 1 13302 C T 0.11 NA 0.21 0.08 0.02 NA NA
-#	rs144762171 1 13327 G C 0.03 NA 0.02 0.03 0.02 NA NA
-#	rs201747181 1 13957 TC T 0.02 0.02 0.02 0.02 0.01 NA NA
-#	rs151276478 1 13980 T C 0.02 NA 0.01 0.02 0.02 NA NA
-#	rs140337953 1 30923 G T 0.73 NA 0.48 0.80 0.89 NA NA
-#	rs199681827 1 46402 C CTGT 0.0037 NA 0.01 NA 0.0017 NA NA
-#	rs200430748 1 47190 G GA 0.01 NA 0.06 0.0028 NA NA NA
+# 	0		  	1	    2       3   4   5       6       7           8           9     10
+#	VariantID	CHR_REF	BP_REF	REF	ALT	AlleleA	AlleleB	MinorAllele	MajorAllele	AF	MAF
+#	rs58108140	1	10583	G	A	G	A	A	G	0.14	0.14
+#	rs189107123	1	10611	C	G	C	G	G	C	0.02	0.02
+#	rs180734498	1	13302	C	T	C	T	T	C	0.11	0.11
+#	rs144762171	1	13327	G	C	G	C	C	G	0.03	0.03
+#	rs201747181	1	13957	TC	T	I	D	T	TC	0.02	0.02
+#	rs151276478	1	13980	T	C	T	C	C	T	0.02	0.02
+#	rs140337953	1	30923	G	T	G	T	G	T	0.73	0.27
+#	rs199681827	1	46402	C	CTGT	D	I	CTGT	C	0.0037	0.0037
+#	rs200430748	1	47190	G	GA	D	I	GA	G	0.01	0.01
 #
 print STDOUT "\n";
 print STDOUT "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n";
@@ -606,97 +616,102 @@ open (REFFREQ, "gunzip -c $freqFile |") or die "*** ERROR *** Cannot open [ $fre
 print STDOUT "* Reading Reference Frequency File: [ $freqFile ]...\n";
 
 my %reference_a1_freq = ();
-
+  
 while(my $c = <REFFREQ>){
   chomp $c;
   $c =~ s/^\s+//;
-  
-  ### NOTE TO SELF # How are INDELs handled??? ###
   
   my @fields = split /\s+/, $c; 
   my $variant = $fields[0]; 
   if ( $variant eq "VariantID" ) { next; }
 
+  my $a1 = "";
+  my $a2 = "";
+  
   if ( ( ! defined( $skip_list{$variant} ) ) && defined( $variantlist{$variant} ) && ( ( ! $extractFile ) || defined( $extract{$variant} ) ) ) {
-
-    my $a1 = $fields[3];  # reference allele (can be 0 if monomorphic -- specifically in PLINK-generated files)
-    my $a2 = $fields[4];  # alternative allele
-
+   
     # HapMap 2 based
-    if ( $reference eq "HM2" && $population eq "EUR" ) { 
-    	$reference_a1_freq{$variant} = $fields[5];
-    }
-    elsif ( $reference eq "HM2" && $population eq "AFR" ) { 
-    	$reference_a1_freq{$variant} = $fields[6];
-    }
-    elsif ( $reference eq "HM2" && $population eq "JPT" ) { 
-    	$reference_a1_freq{$variant} = $fields[7];
-    }
-    elsif ( $reference eq "HM2" && $population eq "CHB" ) { 
-    	$reference_a1_freq{$variant} = $fields[8];
-    }
+    if ( $reference eq "HM2") {
+		my $a1 = $fields[3];  # minor allele (can be 0 if monomorphic)
+		my $a2 = $fields[4];  # major allele
+		$reference_a1_freq{$variant} = $fields[6];
+ 	
+      	### Checking allele compared to reference
+		if ( $a1 eq $dbsnp_a1{$variant} && $a2 eq $dbsnp_a2{$variant} ) {
+			my $tmp1 = $dbsnp_a1{$variant};
+			my $tmp2 = $dbsnp_a2{$variant};
+			$dbsnp_a1{$variant} = $tmp1;
+			$dbsnp_a2{$variant} = $tmp2;
+		}
+		elsif ( $a2 eq $dbsnp_a1{$variant} && $a1 eq $dbsnp_a2{$variant} ) {
+			my $tmp = $dbsnp_a1{$variant};
+			$dbsnp_a1{$variant} = $dbsnp_a2{$variant};
+			$dbsnp_a2{$variant} = $tmp;
+		}
+		elsif ( allele_flip( $a2 ) eq $dbsnp_a1{$variant} && allele_flip( $a1 ) eq $dbsnp_a2{$variant} ) {
+			my $tmp = $dbsnp_a1{$variant};
+			$dbsnp_a1{$variant} = $dbsnp_a2{$variant};
+			$dbsnp_a2{$variant} = $tmp;
+		}
+		elsif ( $a1 eq "0" && $a2 eq $dbsnp_a1{$variant} ) { 
+			my $tmp = $dbsnp_a1{$variant};
+			$dbsnp_a1{$variant} = $dbsnp_a2{$variant};
+			$dbsnp_a2{$variant} = $tmp;
+		}
+		elsif ( $a1 eq "0" && $a2 eq $dbsnp_a2{$variant} ) {
+			$dbsnp_a1{$variant} = $dbsnp_a1{$variant};
+			$dbsnp_a2{$variant} = $dbsnp_a2{$variant};
+		}
+		elsif ( $a1 eq "0" && allele_flip( $a2 ) eq $dbsnp_a1{$variant} ) { 
+			my $tmp = $dbsnp_a1{$variant};
+			$dbsnp_a1{$variant} = $dbsnp_a2{$variant};
+			$dbsnp_a2{$variant} = $tmp;
+		}
+# 	print STDOUT " *** DEBUG *** The $variant has allele frequency = $reference_a1_freq{$variant} and allele A1 = $a1; allele A2 = $a2.\n";
+	}
     # 1000G based
-    elsif ( $reference eq "1Gp1" || $reference eq "1Gp3" && $population eq "PAN" ) { 
-    	$reference_a1_freq{$variant} = $fields[5];
-    }
-	elsif ( $reference eq "1Gp3" && $population eq "EUR" ) { 
-    	$reference_a1_freq{$variant} = $fields[6];
-    }
-    elsif ( $reference eq "1Gp1" || $reference eq "1Gp3" && $population eq "AFR" ) { 
-    	$reference_a1_freq{$variant} = $fields[7];
-    }
-    elsif ( $reference eq "1Gp1" || $reference eq "1Gp3" && $population eq "AMERICA" ) { 
-    	$reference_a1_freq{$variant} = $fields[8];
-    }
-    elsif ( $reference eq "1Gp1" && $population eq "ASIAN" ) { 
-    	$reference_a1_freq{$variant} = $fields[9];
-    }
-    elsif ( $reference eq "1Gp3" && $population eq "EAS" ) { 
-    	$reference_a1_freq{$variant} = $fields[10];
-    }
-    elsif ( $reference eq "1Gp3" && $population eq "SAS" ) { 
-    	$reference_a1_freq{$variant} = $fields[11];
-    }
-    elsif ( $reference eq "GoNL4" || $reference eq "GoNL5" || $reference eq "1Gp3GONL5" && $population eq "PAN" ) { 
-    	$reference_a1_freq{$variant} = $fields[5];
-    }
-	else {
-      die "*** ERROR *** You did not specify the reference (--ref) and the population (--pop); now we cannot determine the proper population-based frequency in the reference. Please double back.\n";
-    }
-	
-	
-    if ( $a1 eq $dbsnp_a1{$variant} && $a2 eq $dbsnp_a2{$variant} ) {
-	my $tmp1 = $dbsnp_a1{$variant};
-	my $tmp2 = $dbsnp_a2{$variant};
-	$dbsnp_a1{$variant} = $tmp1;
-	$dbsnp_a2{$variant} = $tmp2;
-    }
-    elsif ( $a2 eq $dbsnp_a1{$variant} && $a1 eq $dbsnp_a2{$variant} ) {
-      my $tmp = $dbsnp_a1{$variant};
-      $dbsnp_a1{$variant} = $dbsnp_a2{$variant};
-      $dbsnp_a2{$variant} = $tmp;
-    }
-    elsif ( allele_flip( $a2 ) eq $dbsnp_a1{$variant} && allele_flip( $a1 ) eq $dbsnp_a2{$variant} ) {
-      my $tmp = $dbsnp_a1{$variant};
-      $dbsnp_a1{$variant} = $dbsnp_a2{$variant};
-      $dbsnp_a2{$variant} = $tmp;
-    }
-    elsif ( $a1 eq "0" && $a2 eq $dbsnp_a1{$variant} ) { 
-      my $tmp = $dbsnp_a1{$variant};
-      $dbsnp_a1{$variant} = $dbsnp_a2{$variant};
-      $dbsnp_a2{$variant} = $tmp;
-    }
-    elsif ( $a1 eq "0" && $a2 eq $dbsnp_a2{$variant} ) {
-      $dbsnp_a1{$variant} = $dbsnp_a1{$variant};
-      $dbsnp_a2{$variant} = $dbsnp_a2{$variant};
-  	}
-    elsif ( $a1 eq "0" && allele_flip( $a2 ) eq $dbsnp_a1{$variant} ) { 
-      my $tmp = $dbsnp_a1{$variant};
-      $dbsnp_a1{$variant} = $dbsnp_a2{$variant};
-      $dbsnp_a2{$variant} = $tmp;
-    }
+    elsif ( $reference eq "1Gp1" || $reference eq "1Gp3" || $reference eq "GoNL4" || $reference eq "GoNL5" || $reference eq "1Gp3GONL5" ) {
+		my $a1 = $fields[7];  # minor allele; could be alternative or reference allele
+		my $a2 = $fields[8];  # major allele
+		$reference_a1_freq{$variant} = $fields[10];
+
+		### Checking allele compared to reference	
+		if ( $a1 eq $dbsnp_a1{$variant} && $a2 eq $dbsnp_a2{$variant} ) {
+		  my $tmp1 = $dbsnp_a1{$variant};
+		  my $tmp2 = $dbsnp_a2{$variant};
+		  $dbsnp_a1{$variant} = $tmp1;
+		  $dbsnp_a2{$variant} = $tmp2;
+		}
+		elsif ( $a2 eq $dbsnp_a1{$variant} && $a1 eq $dbsnp_a2{$variant} ) {
+		  my $tmp = $dbsnp_a1{$variant};
+		  $dbsnp_a1{$variant} = $dbsnp_a2{$variant};
+		  $dbsnp_a2{$variant} = $tmp;
+		}
+		# We have edited the allele_flip() function such that it will also handle INDELs of the form [ATCG]_[ATCG]
+		elsif ( allele_flip( $a2 ) eq $dbsnp_a1{$variant} && allele_flip( $a1 ) eq $dbsnp_a2{$variant} ) {
+		  my $tmp = $dbsnp_a1{$variant};
+		  $dbsnp_a1{$variant} = $dbsnp_a2{$variant};
+		  $dbsnp_a2{$variant} = $tmp;
+		}
+		elsif ( $a1 eq "0" && $a2 eq $dbsnp_a1{$variant} ) { 
+		  my $tmp = $dbsnp_a1{$variant};
+		  $dbsnp_a1{$variant} = $dbsnp_a2{$variant};
+		  $dbsnp_a2{$variant} = $tmp;
+		}
+		elsif ( $a1 eq "0" && $a2 eq $dbsnp_a2{$variant} ) {
+		  $dbsnp_a1{$variant} = $dbsnp_a1{$variant};
+		  $dbsnp_a2{$variant} = $dbsnp_a2{$variant};
+		}
+		# We have edited the allele_flip() function such that it will also handle INDELs of the form [ATCG]_[ATCG]
+		elsif ( $a1 eq "0" && allele_flip( $a2 ) eq $dbsnp_a1{$variant} ) { 
+		  my $tmp = $dbsnp_a1{$variant};
+		  $dbsnp_a1{$variant} = $dbsnp_a2{$variant};
+		  $dbsnp_a2{$variant} = $tmp;
+		}
+#  	print STDOUT " *** DEBUG *** The $variant has allele frequency = $reference_a1_freq{$variant} and allele A/A1/ALT = $a1; allele B/A2/REF = $a2.\n";
+	}
     else {
-      print STDERR "* For the $variant, we cannot determine the Reference Frequency for alleles $a1 and $a2 and annotated alleles $dbsnp_a1{$variant} $dbsnp_a2{$variant} -- skipping it.\n";
+      print STDERR "* For the $variant, we cannot determine the Reference Frequency for alleles [ $a1/$a2 ] and annotated alleles [ $dbsnp_a1{$variant}/$dbsnp_a2{$variant} ] -- skipping it. Reference: [ $reference ]; population: [ $population ].\n";
       $skip_list{$variant} = 1;
     }
   }
@@ -706,24 +721,20 @@ close (REFFREQ);
 ##########################################################################################
 ##########################################################################################
 ###
-### read in the genes
+### read in the genes from GENCODE
 ### 
 ##########################################################################################
 ##########################################################################################
 #
+# MetaGWASToolKit uses GENCODE -- obviously other flavours are possible.
+#
 # Expected format of such a genes file is the following:
 #
-# 	0 1	        2         3
-#	9 112963230 112969859 C9orf152
-#	11 46299662 46342293 CREB3L1
-#	19 49999713 50002889 RPS11
-#	20 44996001 45023121 ELMO2
-#	14 74179283 74180342 PNMA1
-#	16 55513391 55539351 MMP2
-#	11 61160103 61165745 TMEM216
-#	10 128114435 128359049 C10orf90
-#	20 39813568 39833556 ZHX3
-#	13 103498616 103528250 ERCC5
+# Column 	Chr TxStart		TxEnd		Gene		EnsemblID			Strand
+# Column# 	0	1	        2         	3			4					5
+#			1 	66999065 	67213982 	SGIP1 		ENST00000237247.6,ENST00000371039.1,ENST00000371035.3,ENST00000468286.1,ENST00000371036.3,ENST00000371037.4 	+
+#			1 	8377885 	8404227 	SLC45A1 	ENST00000471889.1,ENST00000377479.2,ENST00000289877.8 	+
+#			1 	16767166	16786573 	NECAP2 		ENST00000337132.5 	+
 #
 print STDOUT "\n";
 print STDOUT "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n";
@@ -731,14 +742,15 @@ print STDOUT "Reading in genes.\n";
 print STDOUT "\n";
 
 open (GENE, "gunzip -c $genesFile |") or die "*** ERROR *** Cannot open $genesFile. Please double back.\n";
-#open (GENE, $genesFile) or die "*** ERROR *** Cannot open $genesFile. Please double back.\n";
 print STDOUT "* Reading file: $genesFile...\n";
 
 my $ngenes = 0;
-my @gene = ();
-my @gene_chr = ();
-my @gene_start = ();
-my @gene_stop = ();
+my @gene = (); # gene name, official HUGO
+my @gene_chr = (); # chromosome
+my @gene_start = (); # transcription start position
+my @gene_stop = (); # transcription end position
+my @gene_ensembl = (); # Ensembl ID
+my @gene_strand = (); # gene strand position
 
 while(my $c = <GENE>){
   chomp $c;
@@ -748,6 +760,8 @@ while(my $c = <GENE>){
   $gene_start[$ngenes] = $fields[1];
   $gene_stop[$ngenes] = $fields[2];
   $gene[$ngenes] = $fields[3];
+  $gene_ensembl[$ngenes] = $fields[4];
+  $gene_strand[$ngenes] = $fields[5];
   $ngenes++;
 }
 close (GENE);
@@ -769,19 +783,27 @@ print STDOUT "\n";
 print STDOUT "Preparing the output file...\n";
 
 open (OUT, ">$outFile") or die "*** ERROR *** Cannot open [ $outFile ]. Please double back and check permissions.\n";
-print OUT "VARIANTID CHR POS REF ALT REFFREQ"; # these are based on the reference!
+if ( $reference eq "HM2") {
+    print OUT "VARIANTID CHR POS MINOR MAJOR MAF"; # these are based on the reference!
+}
+elsif ( $reference eq "GoNL4" || $reference eq "GoNL5" || $reference eq "1Gp3GONL5" || $reference eq "1Gp1" || $reference eq "1Gp3" ) {
+    print OUT "VARIANTID CHR POS MINOR MAJOR MAF"; # these are based on the reference/population!
+}
+else {
+    die "*** ERROR *** You did not specify the reference (--ref); now we cannot properly print the header. Please double back.\n";
+}
 
 if ( $verbose ) {
   for (my $i=0; $i < $nstudies; $i++) {
-    print OUT " EFFECTALLELE_$study_name[$i] OTHERALLELE_$study_name[$i] ALLELES_FLIPPED_$study_name[$i] SIGN_FLIPPED_$study_name[$i] EAF_$study_name[$i] BETA_$study_name[$i] SE_$study_name[$i] P_$study_name[$i] Info_$study_name[$i] NEFF_$study_name[$i]";
+    print OUT " CODEDALLELE_$study_name[$i] OTHERALLELE_$study_name[$i] ALLELES_FLIPPED_$study_name[$i] SIGN_FLIPPED_$study_name[$i] CAF_$study_name[$i] BETA_$study_name[$i] SE_$study_name[$i] P_$study_name[$i] Info_$study_name[$i] NEFF_$study_name[$i]";
   }
 }
 
-print OUT " EFFECTALLELE OTHERALLELE EAF N_EFF Z_SQRTN P_SQRTN BETA_FIXED SE_FIXED Z_FIXED P_FIXED BETA_LOWER_FIXED BETA_UPPER_FIXED ";
+print OUT " CODEDALLELE OTHERALLELE CAF N_EFF Z_SQRTN P_SQRTN BETA_FIXED SE_FIXED Z_FIXED P_FIXED BETA_LOWER_FIXED BETA_UPPER_FIXED ";
 if ( $random_effects ) {
-  print OUT "BETA_RANDOM  SE_RANDOM  Z_RANDOM  P_RANDOM  BETA_LOWER_RANDOM BETA_UPPER_RANDOM COCHRANS_Q DF P_COCHRANS_Q I_SQUARED TAU_SQUARED ";
+  print OUT "BETA_RANDOM SE_RANDOM Z_RANDOM P_RANDOM BETA_LOWER_RANDOM BETA_UPPER_RANDOM COCHRANS_Q DF P_COCHRANS_Q I_SQUARED TAU_SQUARED ";
 }
-print OUT "DIRECTIONS GENES_" . $gene_dist . "KB NEAREST_GENE FUNCTION CAVEAT\n";
+print OUT "DIRECTIONS GENES_" . $gene_dist . "KB NEAREST_GENE NEAREST_GENE_ENSEMBLID NEAREST_GENE_STRAND VARIANT_FUNCTION CAVEAT\n";
 
 
 ##########################################################################################
@@ -791,6 +813,18 @@ print OUT "DIRECTIONS GENES_" . $gene_dist . "KB NEAREST_GENE FUNCTION CAVEAT\n"
 ###
 ##########################################################################################
 ##########################################################################################
+#
+# Expected input file format
+#
+# Column#	0		  1	  2  3    4  5 6            7           8   9
+#			VariantID CHR BP Beta SE P CodedAllele OtherAllele MAF Info
+#			rs61769339 1 662622 0.064738 0.151472 0.669216 A G 0.0813265 0.314296
+#			rs61769350 1 693731 0.0809252 0.125964 0.520777 G A 0.0959278 0.395173
+#			rs189800799 1 701835 -0.29061 0.256943 0.258402 C T 0.0204806 0.419007
+#			rs28457007 1 712930 -0.2485 0.267268 0.352784 C T 0.0195845 0.404344
+#			chr1:713131:AT_A 1 713131 -0.22227 0.228877 0.331793 AT A 0.0220612 0.485933
+#			rs114983708 1 714019 -0.0590389 0.179203 0.741906 G A 0.0527746 0.335025
+
 print STDOUT "Meta-analyzing this shizzle...\n";
 my $nvariants_in_meta = 0;
 my $not_on_reference = 0;
@@ -811,10 +845,11 @@ for (my $nvariant; $nvariant < $n_total_variants; $nvariant++) {
 #  my $ref2 = "0";
   my $ref1 = $dbsnp_a1{$variant};
   my $ref2 = $dbsnp_a2{$variant};
-  my $effect_allele = $ref1;
+  my $coded_allele = $ref1;
   my $other_allele = $ref2;
   my @study_okay = ();
   my @flip_alleles = ();
+  my @flip_indels = (); # for INDELs of the form R/D/I
   my @sample_size_eff = ();
   my $n_okay_studies = 0;
   my $total_weight = 0;
@@ -830,10 +865,10 @@ for (my $nvariant; $nvariant < $n_total_variants; $nvariant++) {
   my @beta = ();
   my @se = ();
   my @pval = ();
-  my @a1 = ();
+  my @a1 = (); # coded/effect allele, i.e. minor allele
   my @a2 = ();
-  my @af1 = ();
-  my @ratio = ();
+  my @af1 = (); # coded/effect allele frequency; i.e. minor allele frequency
+  my @ratio = (); # i.e. imputation quality
  
   ###
   ### first read in the data
@@ -845,7 +880,7 @@ for (my $nvariant; $nvariant < $n_total_variants; $nvariant++) {
     chomp $c;
     my @fields = split /\s+/, $c;
 
-    if ( $fields[0] ne $variant ) { die "*** ERROR *** [ $filename[$study] ] is not in order with [ $variantFile ] -- was expecting $variant but got $fields[0]. \n"; }
+    if ( $fields[0] ne $variant ) { die "*** ERROR *** [ $filename[$study] ] is not in order with [ $variantFile ] -- was expecting [ $variant ] but got [ $fields[0] ]. \n"; }
 
     if ( $fields[1] eq "X" ) { $chr[$study] = 23; }
     elsif ( $fields[1] eq "Y" ) { $chr[$study] = 24; }
@@ -857,11 +892,28 @@ for (my $nvariant; $nvariant < $n_total_variants; $nvariant++) {
     $beta[$study] = $fields[3];
     $se[$study] = $fields[4];
     $pval[$study] = $fields[5];
-    $a1[$study] = allele_1234_to_ACGT( $fields[6] );
-    $a2[$study] = allele_1234_to_ACGT( $fields[7] );
+    $a1[$study] = allele_1234_to_ACGT( $fields[6] ); # coded/effect allele which is compared to the minor allele from HapMap2 or ALT-allele from 1000G
+    $a2[$study] = allele_1234_to_ACGT( $fields[7] ); # other/reference allele
     $af1[$study] = $fields[8];  
 
-    if ( $#fields == 9 ) { $ratio[$study] = $fields[9]; } else { $ratio[$study] = 1; }
+	# checking how many fields we have to determine the value of $ratio
+#     print STDERR " ***DEBUG***  A column with a measure of imputation quality exists for [ $variant ] in [ $study_name[$study] ]; checking contents and setting to 1 if needed (genotyped and NA only).\n";
+    if ( $#fields == 9 ) { 
+    	if ( $fields[9] != "NA" ) {
+#      		print STDERR " - Imputation quality = [ $fields[9] ].\n";
+    		$ratio[$study] = $fields[9];
+#      		print STDERR " ***DEBUG***  ratio = $ratio[$study].\n"
+    		} else {
+#      		print STDERR " - Imputation quality = [ $fields[9] ]. Setting to 1.\n";
+    		$ratio[$study] = 1; 
+#      		print STDERR " ***DEBUG***  ratio = $ratio[$study].\n"
+    		}
+    	} else { 
+#      		print STDERR "* There is no measure of imputation quality for [ $variant ] in [ $study_name[$study] ]. Assuming the data is genotyped. Setting to 1.\n";
+    		$ratio[$study] = 1; 
+#      		print STDERR " ***DEBUG***  ratio = $ratio[$study].\n"
+    }
+    
   }
 
   ### reset skip 
@@ -869,6 +921,7 @@ for (my $nvariant; $nvariant < $n_total_variants; $nvariant++) {
    
   ### check if this variant has a Reference frequency 
   if ( ! defined( $reference_a1_freq{$variant} ) ) {
+    print STDERR " ***DEBUG***  This [ $variant ] does not have a reference frequency.\n";
     $not_on_reference++;
     $reference_present{$variant} = 0;
     $caveat{$variant} .= "not_in_reference";
@@ -880,103 +933,126 @@ for (my $nvariant; $nvariant < $n_total_variants; $nvariant++) {
   ###
   ### walk through studies to see who's present
   ###
-  for ( my $study=0; $study < $nstudies; $study++ ) {  
-      
+  for ( my $study=0; $study < $nstudies; $study++ ) {  ### START OF FOR-LOOP
     ### first assume the study is okay
     $study_okay[$study] = 1;
-   
     ### since we do not use the p-value it is not strictly essential to have p-value in the input file
     #if ( $beta[$study] eq "NA" || $se[$study] eq "NA" || $af1[$study] eq "NA" || $ratio[$study] eq "NA" || $pval[$study] eq "NA" || $a1[$study] eq "NA" || $a2[$study] eq "NA" || $se[$study] == 0 ) {
     if ( $beta[$study] eq "NA" || $se[$study] eq "NA" || $af1[$study] eq "NA" || $ratio[$study] eq "NA" || $a1[$study] eq "NA" || $a2[$study] eq "NA" || $se[$study] == 0 ) {
-
       $study_okay[$study] = 0;
-
-    } else {
-
-      ### allele a1 and allele a2 match the two reference alleles 
-      if ( ( $a1[$study] eq $ref1 && $a2[$study] eq $ref2 ) || ( $a1[$study] eq $ref2 && $a2[$study] eq $ref1 ) ) { 
-        $flip_alleles[$study] = 0;
-
-      ### frequency-based test for A/T or C/G SNPs
-        if ( ( $a1[$study] eq "A" && $a2[$study] eq "T" ) || ( $a1[$study] eq "T" && $a2[$study] eq "A" ) || ( $a1[$study] eq "C" && $a2[$study] eq "G" ) || ( $a1[$study] eq "G" && $a2[$study] eq "C" ) ) {
-	    if ( $reference_present{$variant} = 1 ) {
-		if ( $a1[$study] eq $ref1 && ( $af1[$study] > ( $reference_a1_freq{$variant} - $freq_flip ) ) && ( $af1[$study] < ( $reference_a1_freq{$variant} + $freq_flip ) ) ) {
-		}
-		elsif ( $a2[$study] eq $ref1 && ( $af1[$study] > ( 1 - $reference_a1_freq{$variant} - $freq_flip ) ) && ( $af1[$study] < ( 1 - $reference_a1_freq{$variant} + $freq_flip ) ) ) {
-		}
-		elsif ( $a1[$study] eq allele_flip( $ref1 ) && ( $af1[$study] > ( $reference_a1_freq{$variant} - $freq_flip ) ) && ( $af1[$study] < ( $reference_a1_freq{$variant} + $freq_flip ) ) ) {
-		    $flip_alleles[$study] = 1;
-		}
-		elsif ( $a2[$study] eq allele_flip( $ref1 ) && ( $af1[$study] > ( 1 - $reference_a1_freq{$variant} - $freq_flip ) ) && ( $af1[$study] < ( 1 - $reference_a1_freq{$variant} + $freq_flip ) ) ) {
-		    $flip_alleles[$study] = 1;
-		}
-		else {
-		    print STDERR "* In $study_name[$study], $variant has allele frequencies for A/T or C/G variants inconsistent with Reference frequencies -- skipping this variant for this study.\n";
-		    $study_okay[$study] = 0;
-		}
-	    }
-	}   
-        
-       ### frequency-based test for non-A/T and non-C/G SNPs 
-        else {
-	    if ( $reference_present{$variant} =1 ) {
-		if ( $a1[$study] eq $ref1 && ( $af1[$study] > ( $reference_a1_freq{$variant} - $freq_flip ) ) && ( $af1[$study] < ( $reference_a1_freq{$variant} + $freq_flip ) ) ) {
-		}
-		elsif ( $a2[$study] eq $ref1 && ( $af1[$study] > ( 1 - $reference_a1_freq{$variant} - $freq_flip ) ) && ( $af1[$study] < ( 1 - $reference_a1_freq{$variant} + $freq_flip ) ) ) {
-		}
-		else {
-		    print STDERR "* In $study_name[$study], $variant has allele frequencies inconsistent with Reference frequencies -- skipping this variant for this study.\n";
-		    $study_okay[$study] = 0;
-		}
-	    }
-        
-	}
-
-      ### Warning for allele frequencies between 0.35 and 0.65 for A/T and C/G SNPs
-      if ( ( ( $a1[$study] eq "A" && $a2[$study] eq "T" ) || ( $a1[$study] eq "T" && $a2[$study] eq "A" ) || ( $a1[$study] eq "C" && $a2[$study] eq "G" ) || ( $a1[$study] eq "G" && $a2[$study] eq "C" ) ) && ( ( $af1[$study] > $freq_warning && $af1[$study] < 1-$freq_warning ) || ( $reference_a1_freq{$variant} > $freq_warning && $reference_a1_freq{$variant} < 1-$freq_warning ) ) ) {
-	  $caveat{$variant} .= "ATCG_variant_with_$low_freq_warning<EAF<$hifreq_warning";
-      }
-
-    }
-
-      ### allele a1 and allele a2 do not match the two reference alleles 
-      elsif ( ( $a1[$study] eq allele_flip( $ref1 ) && $a2[$study] eq allele_flip( $ref2 ) ) || ( $a1[$study] eq allele_flip( $ref2 ) && $a2[$study] eq allele_flip( $ref1 ) ) ) { 
-        $flip_alleles[$study] = 1;
-      
-      ### frequency-based test for non-A/T and non-C/G SNPs
-        if ( $reference_present{$variant} =1 ) {
-	    if ( $a1[$study] eq allele_flip( $ref1 ) && ( $af1[$study] > ( $reference_a1_freq{$variant} - $freq_flip ) ) && ( $af1[$study] < ( $reference_a1_freq{$variant} + $freq_flip ) ) ) {
-	    }
-	    elsif ( $a2[$study] eq allele_flip( $ref1 ) && ( $af1[$study] > ( 1 - $reference_a1_freq{$variant} - $freq_flip ) ) && ( $af1[$study] < ( 1 - $reference_a1_freq{$variant} + $freq_flip ) ) ) {
-	    }
-	    else {
-		print STDERR "* In $study_name[$study], $variant has allele frequencies inconsistent with Reference frequencies -- skipping this variant for this study.\n";
-		$study_okay[$study] = 0;
-	    }
-        }
-    }
-      ### the coded allele (a1) and the noncoded allele do not match the two reference alleles -- even after flipping
-      else {
-        print STDERR "* In $study_name[$study], $variant has alleles $a1[$study] $a2[$study] inconsistent with Reference alleles $ref1 $ref2 -- skipping this variant for this study.\n"; 
-        $study_okay[$study] = 0;
-      }
-    } 
-
+    } else { ### START OF THIS ELSE
+    	  ### START CHECK #1: allele a1 and allele a2 match the two reference alleles 
+    	  	if ( ( $a1[$study] eq $ref1 && $a2[$study] eq $ref2 ) || ( $a1[$study] eq $ref2 && $a2[$study] eq $ref1 ) ) { 
+    		    $flip_alleles[$study] = 0;
+    		  ### frequency-based test for A/T or C/G SNPs
+    		    if ( ( $a1[$study] eq "A" && $a2[$study] eq "T" ) || ( $a1[$study] eq "T" && $a2[$study] eq "A" ) || ( $a1[$study] eq "C" && $a2[$study] eq "G" ) || ( $a1[$study] eq "G" && $a2[$study] eq "C" ) ) {
+				    if ( $reference_present{$variant} = 1 ) {
+						if ( $a1[$study] eq $ref1 && ( $af1[$study] > ( $reference_a1_freq{$variant} - $freq_flip ) ) && ( $af1[$study] < ( $reference_a1_freq{$variant} + $freq_flip ) ) ) {
+						}
+						elsif ( $a2[$study] eq $ref1 && ( $af1[$study] > ( 1 - $reference_a1_freq{$variant} - $freq_flip ) ) && ( $af1[$study] < ( 1 - $reference_a1_freq{$variant} + $freq_flip ) ) ) {
+						}
+						elsif ( $a1[$study] eq allele_flip( $ref1 ) && ( $af1[$study] > ( $reference_a1_freq{$variant} - $freq_flip ) ) && ( $af1[$study] < ( $reference_a1_freq{$variant} + $freq_flip ) ) ) {
+						    $flip_alleles[$study] = 1;
+						}
+						elsif ( $a2[$study] eq allele_flip( $ref1 ) && ( $af1[$study] > ( 1 - $reference_a1_freq{$variant} - $freq_flip ) ) && ( $af1[$study] < ( 1 - $reference_a1_freq{$variant} + $freq_flip ) ) ) {
+						    $flip_alleles[$study] = 1;
+						}
+						else {
+						    print STDERR "* In $study_name[$study], $variant has allele frequencies for A/T or C/G variants inconsistent with Reference frequencies -- skipping this variant for this study.\n";
+						    $study_okay[$study] = 0;
+						}
+				    }
+				}   
+    		   ### frequency-based test for non-A/T and non-C/G SNPs 
+    		    else {
+				    if ( $reference_present{$variant} =1 ) {
+						if ( $a1[$study] eq $ref1 && ( $af1[$study] > ( $reference_a1_freq{$variant} - $freq_flip ) ) && ( $af1[$study] < ( $reference_a1_freq{$variant} + $freq_flip ) ) ) {
+						}
+						elsif ( $a2[$study] eq $ref1 && ( $af1[$study] > ( 1 - $reference_a1_freq{$variant} - $freq_flip ) ) && ( $af1[$study] < ( 1 - $reference_a1_freq{$variant} + $freq_flip ) ) ) {
+						}
+						else {
+						    print STDERR "* In $study_name[$study], $variant has matching alleles with Reference, but an allele frequency inconsistent with Reference frequencies -- skipping this variant for this study.\n";
+						    $study_okay[$study] = 0;
+						}
+				    }
+				}
+    		### Warning for allele frequencies between $low_freq_warning and $hifreq_warning for A/T and C/G SNPs
+    		  if ( ( ( $a1[$study] eq "A" && $a2[$study] eq "T" ) || ( $a1[$study] eq "T" && $a2[$study] eq "A" ) || ( $a1[$study] eq "C" && $a2[$study] eq "G" ) || ( $a1[$study] eq "G" && $a2[$study] eq "C" ) ) && ( ( $af1[$study] > $freq_warning && $af1[$study] < 1-$freq_warning ) || ( $reference_a1_freq{$variant} > $freq_warning && $reference_a1_freq{$variant} < 1-$freq_warning ) ) ) {
+			  	$caveat{$variant} .= "ATCG_variant_with_$low_freq_warning<EAF<$hifreq_warning";
+    		  }
+    	  	} ### END CHECK #1
+    	  	### START CHECK #2: allele a1 and allele a2 do NOT match the two reference alleles 
+    		elsif ( ( $a1[$study] eq allele_flip( $ref1 ) && $a2[$study] eq allele_flip( $ref2 ) ) || ( $a1[$study] eq allele_flip( $ref2 ) && $a2[$study] eq allele_flip( $ref1 ) ) ) { 
+    			    $flip_alleles[$study] = 1;
+    			  
+    		  ### frequency-based test for non-A/T and non-C/G SNPs
+    		  if ( $reference_present{$variant} =1 ) {
+				 	if ( $a1[$study] eq allele_flip( $ref1 ) && ( $af1[$study] > ( $reference_a1_freq{$variant} - $freq_flip ) ) && ( $af1[$study] < ( $reference_a1_freq{$variant} + $freq_flip ) ) ) {
+				 	}
+				 	elsif ( $a2[$study] eq allele_flip( $ref1 ) && ( $af1[$study] > ( 1 - $reference_a1_freq{$variant} - $freq_flip ) ) && ( $af1[$study] < ( 1 - $reference_a1_freq{$variant} + $freq_flip ) ) ) {
+				 	}
+				 	else {
+					print STDERR "* In $study_name[$study], $variant has non-matching alleles with Reference, and an allele frequency inconsistent with Reference frequencies -- skipping this variant for this study.\n";
+					$study_okay[$study] = 0;
+				 	}
+    		    }
+    		} ### END CHECK #2
+	    	### START CHECK #3: in case of studies that have D/I coding for INDELs
+	    	elsif ( ( $a1[$study] eq "D" && $a2[$study] eq "I" && length($ref1) < length($ref2) ) || ( $a1[$study] eq "I" && $a2[$study] eq "D" && length($ref1) > length($ref2) ) ) {
+#  	    		print STDERR "*** DEBUG *** In $study_name[$study], $variant has alleles [ $a1[$study]/$a2[$study] ] which is the same as the Reference alleles [ $ref1/$ref2 ].\n";
+	    		$flip_alleles[$study] = 0;
+	    	} ### END CHECK #3
+	    	
+	    	### START CHECK #4
+	    	elsif ( ( $a1[$study] eq "D" && $a2[$study] eq "I" && length($ref1) > length($ref2) ) || ( $a1[$study] eq "I" && $a2[$study] eq "D" && length($ref1) < length($ref2) ) ) {
+ 	    		print STDERR "* In $study_name[$study], $variant has alleles [ $a1[$study]/$a2[$study] ], while the Reference has alleles [ $ref1/$ref2 ]. Flipping these.\n";
+	    		$flip_indels[$study] = 1;
+	    	} ### START CHECK #4
+	    	
+	    	
+	    	### START CHECK #5: in case of studies that have R/D/I coding for INDELs
+	    	elsif ( ( $a1[$study] eq "R" && $a2[$study] eq "D" && length($ref1) > length($ref2) ) || ( $a1[$study] eq "D" && $a2[$study] eq "R" && length($ref1) < length($ref2) ) ) {
+#  	    		print STDERR "*** DEBUG *** In $study_name[$study], $variant has alleles [ $a1[$study]/$a2[$study] ] which is the same as the Reference alleles [ $ref1/$ref2 ].\n";
+	    		$flip_alleles[$study] = 0;
+	    	} ### END CHECK #5
+	    	### START CHECK #6: in case of studies that have R/D/I coding for INDELs
+	    	elsif ( ( $a1[$study] eq "R" && $a2[$study] eq "I" && length($ref1) < length($ref2) ) || ( $a1[$study] eq "I" && $a2[$study] eq "R" && length($ref1) > length($ref2) ) ) {
+#  	    		print STDERR "*** DEBUG *** In $study_name[$study], $variant has alleles [ $a1[$study]/$a2[$study] ] which is the same as the Reference alleles [ $ref1/$ref2 ].\n";
+	    		$flip_alleles[$study] = 0;
+	    	} ### END CHECK #6
+	    	### START CHECK #7
+	    	elsif ( ( $a1[$study] eq "R" && $a2[$study] eq "D" && length($ref1) < length($ref2) ) || ( $a1[$study] eq "D" && $a2[$study] eq "R" && length($ref1) > length($ref2) ) ) {
+	    		print STDERR "* In $study_name[$study], $variant has alleles [ $a1[$study]/$a2[$study] ], while the Reference has alleles [ $ref1/$ref2 ]. Flipping these.\n";
+	    		$flip_indels[$study] = 1;
+	    	} ### START CHECK #7
+	    	### START CHECK #8
+	    	elsif ( ( $a1[$study] eq "R" && $a2[$study] eq "I" && length($ref1) > length($ref2) ) || ( $a1[$study] eq "I" && $a2[$study] eq "R" && length($ref1) < length($ref2) ) ) {
+	    		print STDERR "* In $study_name[$study], $variant has alleles [ $a1[$study]/$a2[$study] ], while the Reference has alleles [ $ref1/$ref2 ]. Flipping these.\n";
+	    		$flip_indels[$study] = 1;
+	    	} ### START CHECK #8
+	    	
+    	  	### the coded allele (a1) and the noncoded allele do not match the two reference alleles -- even after flipping
+    	  	else {
+    	    print STDERR "* In $study_name[$study], $variant has alleles $a1[$study] $a2[$study] inconsistent with Reference alleles $ref1 $ref2 -- skipping this variant for this study.\n"; 
+    	    $study_okay[$study] = 0;
+    	  	}
+    	} ### END OF THIS ELSE
     if ( $study_okay[$study] == 1 ) {
+#        print STDERR " *** DEBUG *** Examining sample size for [ $study_name[$study] ]: n = $sample_size[$study] and info = $ratio[$study].\n";
       $sample_size_eff[$study] = $sample_size[$study] * ( $ratio[$study] > 1 ? 1 : $ratio[$study] );
       $n_eff += $sample_size_eff[$study];
       $n_okay_studies++;
     }
-  }
+  } ### END OF FOR-LOOP
 
   if ( $n_okay_studies == 0 ) { 
-    print STDERR "* For $variant no information from any study -- so skipping this variant.\n";
     $n_skipped_uninformative++;
+    print STDERR "* For $variant there is information from one study or none -- so skipping this variant.\n";
   }
   
   if ( $n_eff == 0 ) { 
-    print STDERR "* For $variant effective sample size = 0 -- so skipping this variant.\n";
     $n_skipped_uninformative++;
+    print STDERR "* For $variant the effective sample size = 0 -- so skipping this variant.\n";
   }
 
   if ( $n_okay_studies > 0 && $n_eff > 0 ) {  
@@ -999,7 +1075,7 @@ for (my $nvariant; $nvariant < $n_total_variants; $nvariant++) {
       ### if everything is really okay, proceed
       if ( $study_okay[$study] == 1 ) {
 
-        $n_informative_snps[$study] += 1;
+        $n_informative_variants[$study] += 1;
 
         ### put BETA and SE on same scale across studies and correct SE for inflation 
         $beta[$study] = $beta[$study] / $correction_factor[$study];
@@ -1008,29 +1084,26 @@ for (my $nvariant; $nvariant < $n_total_variants; $nvariant++) {
         my $sign = 1;
         my $alleles_flipped = "N";
 
+		### how to handle A/T/C/G variants including INDELs and implicitly the sign (of the effect size)
         if ( $flip_alleles[$study] == 1 ) {
           $a1[$study] = allele_flip( $a1[$study] );
           $a2[$study] = allele_flip( $a2[$study] );
           $alleles_flipped = "Y";
           $allele_flips[$study]++;
-        }
-
-        if ( $a1[$study] eq $effect_allele && $a2[$study] eq $other_allele ) {
-#	if ( $a1[$study] eq $ref1 && $a2[$study] eq $ref2 ) {
-         #$sign = 1;
-        }
-        elsif ( $a1[$study] eq $other_allele && $a2[$study] eq $effect_allele ) {
-#	elsif ( $a1[$study] eq $ref2 && $a2[$study] eq $ref1 ) { 
-         # change the sign of the beta if the coded/noncoded alleles are reversed compared to the first study
-          #print STDERR "flipped sign for $a1 $a2\n";
           $sign = -1; 
           $sign_flips[$study]++;
-        } 
-        else {
-	    print STDERR "* For $variant in study $study effect/other alleles $a1[$study] $a2[$study] do not match reference alleles $ref1 $ref2.\n";
-          die "*** INTERNAL ERROR *** Effect/other alleles do not match reference alleles\n";
         }
- 
+        
+        ### how to handle INDELs of the form R/D/I and implicitly the sign (of the effect size)
+        if ( $flip_indels[$study] == 1 ) {
+          $a1[$study] = indel_flip( $a1[$study], $a2[$study], "a1" );
+          $a2[$study] = indel_flip( $a1[$study], $a2[$study], "a2" );
+          $alleles_flipped = "Y";
+          $allele_flips[$study]++;
+          $sign = -1; 
+          $sign_flips[$study]++;
+        }
+
         ### inverse variance weighted z-score
         $signed_beta[$study] = $sign * $beta[$study];
         $weight[$study] = 1 / ( $se[$study] * $se[$study] );
@@ -1081,7 +1154,7 @@ for (my $nvariant; $nvariant < $n_total_variants; $nvariant++) {
     my $p_sqrtn = Statistics::Distributions::chisqrprob( 1, $z_sqrtn * $z_sqrtn );
 
     ### print stuff out
-    printf OUT " %s %s %.3f", $effect_allele, $other_allele, $af_weighted;
+    printf OUT " %s %s %.3f", $coded_allele, $other_allele, $af_weighted;
     printf OUT " %.1f %.4f %.4e", $n_eff, $z_sqrtn, $p_sqrtn;
     printf OUT " %.4f %.4f %.4f %.4e %.3f %.3f ", $weighted_mean_beta, $se_mean_beta, $z, $p, $beta_lower, $beta_upper;
 
@@ -1165,6 +1238,8 @@ for (my $nvariant; $nvariant < $n_total_variants; $nvariant++) {
     my $yes_genes = 0;
     my %listed_genes = ();
     my $nearest_gene = "NA";
+    my $nearest_gene_ensembl = "NA";
+    my $nearest_gene_strand = "NA";
     my $nearest_distance = 10000000000;
     my $gene_length_temp = 10000000000;
     my $left_most = $refpos - ($gene_dist * 1000);
@@ -1184,15 +1259,21 @@ for (my $nvariant; $nvariant < $n_total_variants; $nvariant++) {
 
           if ( $refpos > $gene_start[$i] && $refpos < $gene_stop[$i] && $gene_length < $gene_length_temp ) { 
             $nearest_gene = $gene[$i];
+            $nearest_gene_ensembl = $gene_ensembl[$i];
+            $nearest_gene_strand = $gene_strand[$i];
             $gene_length_temp = $gene_length;
             $nearest_distance = 0;
           }
           elsif ( $dist_left > 0 && $dist_left < $nearest_distance ) {
             $nearest_gene = $gene[$i];
+            $nearest_gene_ensembl = $gene_ensembl[$i];
+            $nearest_gene_strand = $gene_strand[$i];
             $nearest_distance = $dist_left;
           }
           elsif ( $dist_right > 0 && $dist_right < $nearest_distance ) {
             $nearest_gene = $gene[$i];
+            $nearest_gene_ensembl = $gene_ensembl[$i];
+            $nearest_gene_strand = $gene_strand[$i];
             $nearest_distance = $dist_right;
           }
 #          print "gene = $gene[$i]   $dist_left  $dist_right  nearest gene = $nearest_gene   nearest_distance = $nearest_distance   gene_length_temp = $gene_length_temp\n"; 
@@ -1204,7 +1285,7 @@ for (my $nvariant; $nvariant < $n_total_variants; $nvariant++) {
       print OUT " NA";
     }
      
-    print OUT " $nearest_gene $dbsnp_function{$variant}";
+    print OUT " $nearest_gene $nearest_gene_ensembl $nearest_gene_strand $dbsnp_function{$variant}";
     
     if ( defined( $caveat{$variant} ) ) { print OUT " $caveat{$variant}"; } else { print OUT " NA"; }
 
@@ -1236,7 +1317,7 @@ print STDOUT "          ----------     ------------     -----------------     --
 
 for (my $study = 0; $study < $nstudies; $study++) {
   close $fh[$study]; 
-  printf STDOUT "%20s %16d %14d %20d\n", $study_name[$study], $allele_flips[$study], $sign_flips[$study], $n_informative_snps[$study];
+  printf STDOUT "%20s %16d %21d %24d\n", $study_name[$study], $allele_flips[$study], $sign_flips[$study], $n_informative_variants[$study];
 }
 
 print STDOUT "\n";
@@ -1250,24 +1331,68 @@ print STDOUT "This meta-analysis of GWAS was successfully finished!!!\n";
 ##########################################################################################
 ##########################################################################################
 
+### Function for flipping alleles with A/T/C/G
 sub allele_flip($)
 {
-  my $allele = shift;
-  my $flipped_allele = "";
-  if ( $allele eq "(LARGEDELETION)" || $allele eq "lengthTooLong" ) { return $allele; }
+	my $allele = shift;
+	my $flipped_allele = "";
+	# probably legacy - it doesn't appear to be part of dbSNP anymore
+ 	if ( $allele eq "(LARGEDELETION)" || $allele eq "lengthTooLong" ) { return $allele; } 
 
-  for (my $i=0; $i < length($allele); $i++) {
-    my $current_base = substr $allele, $i, 1;
-    if ( $current_base eq "A" ) { $flipped_allele .= "T"; }
-    elsif ( $current_base eq "C" ) { $flipped_allele .= "G"; }
-    elsif ( $current_base eq "G" ) { $flipped_allele .= "C"; }
-    elsif ( $current_base eq "T" ) { $flipped_allele .= "A"; }
-    else { $flipped_allele .= $current_base; }    
-  }
+	if ( length($allele) == 1 ) {
+#         print STDERR " ***DEBUG*** Given allele: \t\t[ $allele ].\n";
+        
+		for (my $i=0; $i < length($allele); $i++) {
+			my $current_base = substr $allele, $i, 1;
+			if ( $current_base eq "A" ) { $flipped_allele .= "T"; }
+			elsif ( $current_base eq "C" ) { $flipped_allele .= "G"; }
+			elsif ( $current_base eq "G" ) { $flipped_allele .= "C"; }
+			elsif ( $current_base eq "T" ) { $flipped_allele .= "A"; }
+			else { $flipped_allele .= $current_base; }
+#  			print STDERR " ***DEBUG*** The allele was flipped from [ $current_base ] to [ $flipped_allele ].\n";
+		}
+	return $flipped_allele;
+    }
 
-  return $flipped_allele;
+	if ( length($allele) > 1 ) {
+#  		print STDERR " ***DEBUG*** Given allele has length >1 and is: \t\t[ $allele ].\n";
+		
+		for (my $i=0; $i < length($allele); $i++) {
+            my $current_base = substr $allele, $i, 1;
+            if ( $current_base eq "A" ) { $flipped_allele = $flipped_allele . $current_base =~ s/A/T/gr; }
+            elsif ( $current_base eq "C" ) { $flipped_allele = $flipped_allele . $current_base =~ s/C/G/gr; }
+            elsif ( $current_base eq "G" ) { $flipped_allele = $flipped_allele . $current_base =~ s/G/C/gr; }
+            elsif ( $current_base eq "T" ) { $flipped_allele = $flipped_allele . $current_base =~ s/T/A/gr; }
+            else { $flipped_allele .= $current_base; }
+		}
+# 		print STDERR " ***DEBUG*** The flipped base is: \t[ $flipped_allele ].\n";
+        return $flipped_allele;
+    }
+} ### END OF allele_flip
+
+### Function for flipping INDELs of the form R/D/I
+sub indel_flip($)
+{
+	my $indel_a1 = shift;
+	my $indel_a2 = shift;
+	my $indel_pos = shift;
+
+# 	print STDERR " ***DEBUG*** Given alleles: \t\t[ $indel_a1 / $indel_a2 ].\n";
+	my $flipped_indel_a1 = $indel_a2;
+	my $flipped_indel_a2 = $indel_a1;
+
+#  	print STDERR " ***DEBUG*** The allele was flipped from [ $indel_a1 / $indel_a2 ] to [ $flipped_indel_a1 / $flipped_indel_a2 ].\n";
+
+	if( $indel_pos eq "a1" ) {
+        return $flipped_indel_a1;
+	} elsif( $indel_pos eq "a2" ) {
+        return $flipped_indel_a2;
+	} else {
+        return "Oh_crap_something_is_wrong_with_flipping_this_INDEL.";
+	}
 }
 
+### Function to convert alleles encoding of 1/2/3/4 to A/C/G/T -- which is PLINK old-style
 sub allele_1234_to_ACGT($)
 {
 	my $allele = shift;

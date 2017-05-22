@@ -10,9 +10,9 @@
 print "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 print "                                          GWAS TO REFERENCE HARMONIZER "
 print ""
-print "* Version          : v2.2.2"
+print "* Version          : v2.2.7"
 print ""
-print "* Last update      : 2016-12-22"
+print "* Last update      : 2017-05-22"
 print "* Written by       : Tim Bezemer (t.bezemer-2@umcutrecht.nl)."
 print "* Suggested for by : Sander W. van der Laan | s.w.vanderlaan-2@umcutrecht.nl"
 print ""
@@ -34,8 +34,8 @@ from time import strftime
 import random
 import operator
 
-alt_ids = ["VariantID_alt1", "VariantID_alt2", "VariantID_alt3", "VariantID_alt4", "VariantID_alt5", "VariantID_alt6", "VariantID_alt7", "VariantID_alt8", "VariantID_alt9", "VariantID_alt10", "VariantID_alt11", "VariantID_alt12", "VariantID_alt13"]
-load_columns = ["VariantID","VariantID_alt1","VariantID_alt2","VariantID_alt3","VariantID_alt4","VariantID_alt5","VariantID_alt6","VariantID_alt7","VariantID_alt8","VariantID_alt9","VariantID_alt10","VariantID_alt11","VariantID_alt12","VariantID_alt13","CHR_REF","BP_REF","REF","ALT","AlleleA","AlleleB","VT","AF","EURAF","AFRAF","AMRAF","ASNAF","EASAF","SASAF"]
+alt_ids = ["VariantID_alt1", "VariantID_alt2", "VariantID_alt3"]
+load_columns = ["VariantID","VariantID_alt1","VariantID_alt2","VariantID_alt3"]
 
 parser = argparse.ArgumentParser(description="Look up 'Marker' in GWAS dataset and find associated data in 1000G reference.")
 parser.add_argument("-i", "--identifier", help="The VariantID identifier to use (" + ", ".join(["VariantID"] + alt_ids) + ").", type=str)
@@ -72,8 +72,7 @@ if not args.identifier:
 
 	skip = sorted(random.sample(xrange(1,n+1),n-s)) ### the 0-indexed header will not be included in the skip list
 
-	GWAS_SAMPLE = pd.read_table(args.gwasdata, skiprows=skip, index_col=False,  sep='\t', na_values = ["NA", "NaN", "."], 
-					dtype = {"CHR" : "int32", "BP" : "int32"})
+	GWAS_SAMPLE = pd.read_table(args.gwasdata, skiprows=skip, index_col=False,  sep='\t', na_values = ["NA", "NaN", "."])
 
 	variantid_matches = {}
 
@@ -95,8 +94,7 @@ if not args.identifier:
 		reference_header = pd.read_table(args.reference, index_col=False, sep='\t', nrows=0).columns.values
 		test_load_columns = list( set.intersection( set(reference_header), set(test_load_columns) ) ) 
 
-		test_thousandGenomes = pd.read_table(args.reference, index_col=False,  sep='\t', usecols=test_load_columns,
-		dtype = {"BP" : "int32"})
+		test_thousandGenomes = pd.read_table(args.reference, index_col=False,  sep='\t', usecols=test_load_columns)
 
 		if variantid not in test_thousandGenomes.columns.values:
 
@@ -142,13 +140,11 @@ reference_header = pd.read_table(args.reference, index_col=False, sep='\t', nrow
 load_columns = list( set.intersection( set(reference_header), set(load_columns) ) ) 
 
 print "\t ..." + strftime("%a, %H:%M:%S") + " Loading reference: " + args.reference 
-thousandGenomes = pd.read_table(args.reference, index_col=False, usecols=load_columns, 
-				  				dtype = {"BP" : "int32"})
+thousandGenomes = pd.read_table(args.reference, index_col=False, usecols=load_columns)
 
 
 print "\t ..." + strftime("%a, %H:%M:%S") + " Loading GWAS dataset: " + args.gwasdata
-GWASDATA = pd.read_table(args.gwasdata, index_col=False, sep='\t', na_values = ["NA", "NaN", "."], 
-						 dtype = {"CHR" : "int32", "BP" : "int32"})
+GWASDATA = pd.read_table(args.gwasdata, index_col=False, sep='\t', na_values = ["NA", "NaN", "."])
 
 print "\t ..." + strftime("%a, %H:%M:%S") + " Performing Left Join 'Marker' -> '" + reference_identifier + "': "
 
@@ -192,7 +188,7 @@ print "\t ..." + strftime("%a, %H:%M:%S") + " All done harmonizing. Let's have a
 
 print "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 print "+ The MIT License (MIT)                                                                                      +"
-print "+ Copyright (c) 2016 Tim Bezemer, Sander W. van der Laan | UMC Utrecht, Utrecht, the Netherlands             +"
+print "+ Copyright (c) 2016-2017 Tim Bezemer, Sander W. van der Laan | UMC Utrecht, Utrecht, the Netherlands        +"
 print "+                                                                                                            +"
 print "+ Permission is hereby granted, free of charge, to any person obtaining a copy of this software and          +"
 print "+ associated documentation files (the \"Software\"), to deal in the Software without restriction, including  +"
